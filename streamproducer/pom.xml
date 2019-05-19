@@ -12,7 +12,7 @@
     <artifactId>streamproducer</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>streamproducer</name>
-    <description>Demo project for Spring Boot</description>
+    <description>Reads CSV files and sends them as streams to Apache Kafka topics</description>
 
     <properties>
         <java.version>1.8</java.version>

@@ -24,6 +24,8 @@ public class ActivepoststatisticsApplication {
 //        doSomethingComment();
 //        doSomethingLikes();
 //        doSomethingPost();
+
+        System.out.println("I work :D");
         /**********     FLINK   END    *********************/
 
         context.close();
