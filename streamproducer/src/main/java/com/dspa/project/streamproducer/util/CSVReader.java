@@ -16,12 +16,13 @@ import java.util.regex.Pattern;
 
 public class CSVReader {
 
-    @Value(value = "${comment.topic.name}")
-    String commentTopicName;
-    @Value(value = "${likes.topic.name}")
-    String likesTopicName;
-    @Value(value = "${post.topic.name}")
-    String postTopicName;
+    //TODO: fix problem that does not recognize values from app properties
+    //@Value(value = "${comment.topic.name}")
+    String commentTopicName = "baeldung";
+    //@Value(value = "${likes.topic.name}")
+    String likesTopicName = "likes";
+    //@Value(value = "${post.topic.name}")
+    String postTopicName = "post";
 
     private final Pattern pattern;
 
