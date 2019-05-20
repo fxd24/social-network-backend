@@ -1,6 +1,7 @@
 package com.dspa.project.common.deserialization;
 
 import com.dspa.project.model.CommentEventStream;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
@@ -11,7 +12,7 @@ import java.io.IOException;
 
 public class CommentStreamDeserializationSchema implements DeserializationSchema<CommentEventStream> {
 
-    static ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+    static ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule()).configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
 
     @Override
@@ -19,6 +20,7 @@ public class CommentStreamDeserializationSchema implements DeserializationSchema
         try {
             return objectMapper.readValue(bytes, CommentEventStream.class);
         } catch (IOException e) {
+            e.printStackTrace();
             return null;
         }
     }

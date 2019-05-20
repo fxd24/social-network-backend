@@ -111,7 +111,7 @@ public class StreamproducerApplication {
             future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
                 @Override
                 public void onSuccess(SendResult<String, String> result) {
-                    //System.out.println("Sent message=[" + message + "] with offset=[" + result.getRecordMetadata().offset() + "]");
+                    System.out.println("Sent message=[" + message + "] with offset=[" + result.getRecordMetadata().offset() + "]");
                 }
                 @Override
                 public void onFailure(Throwable ex) {

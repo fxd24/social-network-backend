@@ -21,7 +21,7 @@ public class ActivepoststatisticsApplication {
 
         /**********     FLINK   START    *********************/
 
-//        doSomethingComment();
+        doSomethingComment();
 //        doSomethingLikes();
 //        doSomethingPost();
 
@@ -41,7 +41,8 @@ public class ActivepoststatisticsApplication {
      */
     public static void doSomethingComment(){
         StreamExecutionEnvironment environment = StreamExecutionEnvironment.getExecutionEnvironment();
-        FlinkKafkaConsumer011<CommentEventStream> consumer = CommentEventStreamConsumer.createCommentEventStreamConsumer("baeldung","localhost:9092", "bar"); //TODO: change to correct topic
+        CommentEventStreamConsumer consume = new CommentEventStreamConsumer();
+        FlinkKafkaConsumer011<CommentEventStream> consumer = consume.createCommentEventStreamConsumer("baeldung","localhost:9092", "bar"); //TODO: change to correct topic
         consumer.setStartFromEarliest(); //TODO: change this based on what is required
         consumer.assignTimestampsAndWatermarks(new CommentEventStreamTimestampAssigner()); //TODO: check if it works
 

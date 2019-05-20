@@ -1,6 +1,7 @@
 package com.dspa.project.common.deserialization;
 
 import com.dspa.project.model.LikesEventStream;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -10,12 +11,17 @@ import java.io.IOException;
 
 public class LikesEventStreamDeserializationSchema implements DeserializationSchema<LikesEventStream> {
 
-    static ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+    static ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule()).configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
 
     @Override
-    public LikesEventStream deserialize(byte[] bytes) throws IOException {
-        return objectMapper.readValue(bytes, LikesEventStream.class);
+    public LikesEventStream deserialize(byte[] bytes) {
+        try {
+            return objectMapper.readValue(bytes, LikesEventStream.class);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     @Override

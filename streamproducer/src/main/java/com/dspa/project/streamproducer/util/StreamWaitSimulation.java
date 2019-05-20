@@ -10,7 +10,7 @@ public class StreamWaitSimulation {
 
 
     //@Value(value = "${speedup.factor}") //TODO: doesn't take the value
-    private int speedup_factor = 100; //TODO: automate the speedup factor
+    private int speedup_factor = 10000; //TODO: automate the speedup factor
 
 
     public void wait(String last_timestamp, String new_timestamp){
