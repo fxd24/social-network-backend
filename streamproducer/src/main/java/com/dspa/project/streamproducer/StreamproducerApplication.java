@@ -1,6 +1,10 @@
 package com.dspa.project.streamproducer;
 
+import com.dspa.project.streamproducer.kafka.ProduceCommentStream;
+import com.dspa.project.streamproducer.kafka.ProduceLikesStream;
+import com.dspa.project.streamproducer.kafka.ProducePostStream;
 import com.dspa.project.streamproducer.util.CSVReader;
+import com.dspa.project.streamproducer.util.StreamWaitSimulation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
@@ -24,72 +28,22 @@ public class StreamproducerApplication {
 
         StreamProducer producer = context.getBean(StreamProducer.class);
 
-        readCommentEventStreamCsvAndSendToTopic(producer);
-        //readLikesEventStreamCsvAndSendToTopic(producer);
-        //readPostEventStreamCsvAndSendToTopic(producer);
+        Runnable runComment = new ProduceCommentStream(producer);
+        Runnable runLikes = new ProduceLikesStream(producer);
+        Runnable runPost = new ProducePostStream(producer);
 
-//        StreamWaitSimulation test = new StreamWaitSimulation();
-//        test.randomSleep();
+        Thread commentThread = new Thread(runComment);
+        Thread likesThread = new Thread(runLikes);
+        Thread postThread = new Thread(runPost);
 
+        commentThread.start();
+        likesThread.start();
+        postThread.start();
 
-    }
+        //comment first: 2012-02-02T02:45:14Z
+        //likes first: 2012-02-02T01:09:00.000Z
+        //post first: 2012-02-02T02:46:56Z
 
-    //TODO: clean this duplicated mess
-    public static void readCommentEventStreamCsvAndSendToTopic(StreamProducer producer) {
-        CSVReader reader = new CSVReader("[|]");
-        final String FILE_PATH = "../../1k-users-sorted/streams/comment_event_stream.csv";
-
-        final File csvFile = new File(FILE_PATH);
-        if (!csvFile.exists()) {
-            try {
-                throw new FileNotFoundException("File not found");
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
-        try {
-            reader.readCommentEventStreamCSV(new BufferedReader(new FileReader(csvFile)), producer);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static void readLikesEventStreamCsvAndSendToTopic(StreamProducer producer) {
-        CSVReader reader = new CSVReader("[|]");
-        final String FILE_PATH = "../../1k-users-sorted/streams/likes_event_stream.csv";
-
-        final File csvFile = new File(FILE_PATH);
-        if (!csvFile.exists()) {
-            try {
-                throw new FileNotFoundException("File not found");
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
-        try {
-            reader.readLikesEventStreamCSV(new BufferedReader(new FileReader(csvFile)), producer);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static void readPostEventStreamCsvAndSendToTopic(StreamProducer producer) {
-        CSVReader reader = new CSVReader("[|]");
-        final String FILE_PATH = "../../1k-users-sorted/streams/post_event_stream.csv";
-
-        final File csvFile = new File(FILE_PATH);
-        if (!csvFile.exists()) {
-            try {
-                throw new FileNotFoundException("File not found");
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
-        try {
-            reader.readPostEventStreamCSV(new BufferedReader(new FileReader(csvFile)), producer);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
     }
 
     @Bean
@@ -103,15 +57,13 @@ public class StreamproducerApplication {
         @Autowired
         private KafkaTemplate<String, String> kafkaTemplate;
 
-        @Value(value = "${comment.topic.name}")
-        private String commentTopicName;
-
         public void sendMessage(String message, String topicName) {
+            (new StreamWaitSimulation()).maySleepRandomAmountOfTime();
             ListenableFuture<SendResult<String, String>> future = kafkaTemplate.send(topicName, message);
             future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
                 @Override
                 public void onSuccess(SendResult<String, String> result) {
-                    System.out.println("Sent message=[" + message + "] with offset=[" + result.getRecordMetadata().offset() + "]");
+                    System.out.println("Sent message to "+ topicName +"=[" + message + "] with offset=[" + result.getRecordMetadata().offset() + "]");
                 }
 
                 @Override
@@ -120,7 +72,5 @@ public class StreamproducerApplication {
                 }
             });
         }
-
     }
-
 }

@@ -30,6 +30,7 @@ public class CSVReader {
         this.pattern = Pattern.compile(separator);
     }
 
+    //Read the CSV file line by line, serialize into object and put to sleep fo
     public void readCommentEventStreamCSV(
             final BufferedReader bufferedReader, StreamproducerApplication.StreamProducer producer) throws IOException {
         String last_timestamp = "";
@@ -48,12 +49,14 @@ public class CSVReader {
                         .locationIP(lineArray[3])
                         .browserUsed(lineArray[4])
                         .content(lineArray[5])
-                        .reply_to_postId(Integer.parseInt(lineArray[6] == "" ? lineArray[6] : "-1")) //TODO: handle this empty string problem in a cleaner way.
-                        .reply_to_commentId(Integer.parseInt(lineArray[7] == "" ? lineArray[7] : "-1"))//TODO
-                        .placeId(Integer.parseInt(lineArray[8] == "" ? lineArray[8] : "-1"))//TODO
+                        .reply_to_postId(Integer.parseInt(lineArray[6].equals("")  ?  "-1":lineArray[6])) //TODO: handle this empty string problem in a cleaner way.
+                        .reply_to_commentId(Integer.parseInt(lineArray[7].equals("") ? "-1":lineArray[7] ))//TODO
+                        .placeId(Integer.parseInt(lineArray[8].equals("") ? "-1": lineArray[8]))//TODO
                         .build();
                 sleep.wait(last_timestamp, lineArray[2]);
                 last_timestamp = lineArray[2];
+
+                //This sends the object to a topic in Kafka
                 send(value, producer, commentTopicName);
             }
 
@@ -62,6 +65,7 @@ public class CSVReader {
         }
     }
 
+    //Read the CSV file line by line, serialize into object and put to sleep fo
     public void readLikesEventStreamCSV(
             final BufferedReader bufferedReader, StreamproducerApplication.StreamProducer producer) throws IOException {
         String last_timestamp = "";
@@ -75,11 +79,14 @@ public class CSVReader {
                 LikesEventStream value = new LikesEventStream
                         .Builder()
                         .personId(Integer.parseInt(lineArray[0]))
-                        .postId(Integer.parseInt(lineArray[1] == "" ? lineArray[1] : "-1")) //TODO: handle this empty string problem in a cleaner way.
+                        .postId(Integer.parseInt(lineArray[1].equals("") ? "-1":lineArray[1] )) //TODO: handle this empty string problem in a cleaner way.
                         .creationDate(lineArray[2])
                         .build();
+                //Here the code will wait before sending the LikesEventStream value created above
                 sleep.wait(last_timestamp, lineArray[2]);
                 last_timestamp = lineArray[2];
+
+                //This sends the object to a topic in Kafka
                 send(value, producer, likesTopicName);
             }
 
@@ -110,7 +117,7 @@ public class CSVReader {
                         .content(lineArray[7])
                         .tags(lineArray[8])
                         .forumId(Integer.parseInt(lineArray[9])) //TODO
-                        .placeId(Integer.parseInt(lineArray[10] == "" ? lineArray[10] : "-1"))//TODO
+                        .placeId(Integer.parseInt(lineArray[10].equals("") ? "-1":lineArray[10].replaceAll("\\D+","")))//TODO
                         .build();
                 sleep.wait(last_timestamp, lineArray[2]);
                 last_timestamp = lineArray[2];

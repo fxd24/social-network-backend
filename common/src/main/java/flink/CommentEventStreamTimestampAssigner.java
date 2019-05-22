@@ -18,6 +18,6 @@ public class CommentEventStreamTimestampAssigner implements AssignerWithPunctuat
     @Nullable
     @Override
     public Watermark checkAndGetNextWatermark(CommentEventStream lastElement, long extractedTimestamp) {
-        return new Watermark(extractedTimestamp - 15);
+        return new Watermark(extractedTimestamp - 300000); //TODO: this has to be equal to the random amount of delay a message can have
     }
 }

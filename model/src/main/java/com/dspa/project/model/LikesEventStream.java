@@ -35,7 +35,7 @@ public class LikesEventStream {
     }
 
     public Date getSentAt() {
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
         Date d = null;
         try {
             d = sdf.parse(creationDate);

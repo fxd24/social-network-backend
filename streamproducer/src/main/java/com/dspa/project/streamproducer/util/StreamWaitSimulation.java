@@ -18,7 +18,7 @@ public class StreamWaitSimulation {
         Date t_last = null;
         Date t_new = null;
         try {
-            System.out.println("Class:StreamWaitSimulation. Function:wait {last_timestamp:" + last_timestamp + "},{new_timestamp:" + new_timestamp + "}"); //TODO: remove when tested
+            //System.out.println("Class:StreamWaitSimulation. Function:wait {last_timestamp:" + last_timestamp + "},{new_timestamp:" + new_timestamp + "}"); //TODO: remove when tested
             t_last = sdf.parse(last_timestamp);
             t_new = sdf.parse(new_timestamp);
         } catch (ParseException e) {
@@ -30,7 +30,7 @@ public class StreamWaitSimulation {
         long diff = t_new.getTime() - t_last.getTime();
         waiting_time = diff / speedup_factor;
         try {
-            System.out.println("Waiting for " + waiting_time + " milliseconds"); //TODO: remove when tested
+            //System.out.println("Waiting for " + waiting_time + " milliseconds"); //TODO: remove when tested
             TimeUnit.MILLISECONDS.sleep(waiting_time);
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -42,13 +42,21 @@ public class StreamWaitSimulation {
     public void randomSleep() { //TODO: add more properties in the randomness range
         Random random = new Random();
         long time = (long) random.nextInt(300000); //this are 5 minutes max delay
-        System.out.println("Random time choosen is " + time + " |"); //TODO:remove eventually
+        //System.out.println("Random time choosen is " + time + " |"); //TODO:remove eventually
         try {
             TimeUnit.MILLISECONDS.sleep(time);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
 
+    public void maySleepRandomAmountOfTime(){
+        Random random = new Random();
+        int randomInt = random.nextInt(10);
+        //sleeps for a random amount of time when randomInt is 1
+        if(randomInt==1){
+            randomSleep();
+        }
 
     }
 }
