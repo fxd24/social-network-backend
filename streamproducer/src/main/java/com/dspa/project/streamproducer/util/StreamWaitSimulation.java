@@ -15,6 +15,7 @@ public class StreamWaitSimulation {
 
     public void wait(String last_timestamp, String new_timestamp) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+
         Date t_last = null;
         Date t_new = null;
         try {

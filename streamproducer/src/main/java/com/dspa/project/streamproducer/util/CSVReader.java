@@ -10,8 +10,15 @@ import org.springframework.beans.factory.annotation.Value;
 
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.HashMap;
+import java.util.PriorityQueue;
 import java.util.regex.Pattern;
+
+import static com.dspa.project.streamproducer.util.Util.handleFileNotFoundException;
 
 
 public class CSVReader {
@@ -30,10 +37,47 @@ public class CSVReader {
         this.pattern = Pattern.compile(separator);
     }
 
+    public HashMap<Long,CommentEventStream> readCommentEventStreamCSVtoMap(PriorityQueue queue) throws IOException {
+        final String FILE_PATH = "../../1k-users-sorted/streams/comment_event_stream.csv";
+        final File csvFile = new File(FILE_PATH);
+        handleFileNotFoundException(csvFile);
+        FileReader fileReader = new FileReader(csvFile);
+        BufferedReader bufferedReader = new BufferedReader(fileReader);
+        HashMap<Long,CommentEventStream> map = new HashMap<>();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        try {
+            String line;
+            line = bufferedReader.readLine(); //read the first line. we do nothing with it.
+            while ((line = bufferedReader.readLine()) != null) {
+                final String[] lineArray = pattern.split(line);
+
+                CommentEventStream value = new CommentEventStream
+                        .Builder()
+                        .id(Integer.parseInt(lineArray[0]))
+                        .personId(Integer.parseInt(lineArray[1]))
+                        .creationDate(lineArray[2])
+                        .locationIP(lineArray[3])
+                        .browserUsed(lineArray[4])
+                        .content(lineArray[5])
+                        .reply_to_postId(Integer.parseInt(lineArray[6].equals("")  ?  "-1":lineArray[6])) //TODO: handle this empty string problem in a cleaner way.
+                        .reply_to_commentId(Integer.parseInt(lineArray[7].equals("") ? "-1":lineArray[7] ))//TODO
+                        .placeId(Integer.parseInt(lineArray[8].equals("") ? "-1": lineArray[8]))//TODO
+                        .build();
+                ;
+                map.put(sdf.parse(value.getCreationDate()).getTime(),value);
+            }
+
+        } finally {
+            bufferedReader.close();
+            return map;
+        }
+    }
+
+
     //Read the CSV file line by line, serialize into object and put to sleep fo
     public void readCommentEventStreamCSV(
             final BufferedReader bufferedReader, StreamproducerApplication.StreamProducer producer) throws IOException {
-        String last_timestamp = "";
+        String last_timestamp = "2012-02-02T01:09:00Z";
         StreamWaitSimulation sleep = new StreamWaitSimulation();
         try {
             String line;
@@ -68,7 +112,7 @@ public class CSVReader {
     //Read the CSV file line by line, serialize into object and put to sleep fo
     public void readLikesEventStreamCSV(
             final BufferedReader bufferedReader, StreamproducerApplication.StreamProducer producer) throws IOException {
-        String last_timestamp = "";
+        String last_timestamp = "2012-02-02T01:09:00.000Z";
         StreamWaitSimulation sleep = new StreamWaitSimulation();
         try {
             String line;
@@ -100,7 +144,7 @@ public class CSVReader {
         try {
             String line;
             line = bufferedReader.readLine(); //read the first line. we do nothing with it.
-            String last_timestamp = "";
+            String last_timestamp = "2012-02-02T01:09:00Z";
             StreamWaitSimulation sleep = new StreamWaitSimulation();
             while ((line = bufferedReader.readLine()) != null) {
                 final String[] lineArray = pattern.split(line);

@@ -1,5 +1,6 @@
 package com.dspa.project.streamproducer;
 
+import com.dspa.project.model.CommentEventStream;
 import com.dspa.project.streamproducer.kafka.ProduceCommentStream;
 import com.dspa.project.streamproducer.kafka.ProduceLikesStream;
 import com.dspa.project.streamproducer.kafka.ProducePostStream;
@@ -16,8 +17,14 @@ import org.springframework.kafka.support.SendResult;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.HashMap;
 
-import java.io.*;
+import static com.dspa.project.streamproducer.util.Util.handleFileNotFoundException;
+
 
 @SpringBootApplication
 public class StreamproducerApplication {
@@ -36,13 +43,24 @@ public class StreamproducerApplication {
         Thread likesThread = new Thread(runLikes);
         Thread postThread = new Thread(runPost);
 
-        commentThread.start();
-        likesThread.start();
-        postThread.start();
+//        commentThread.start();
+//        likesThread.start();
+//        postThread.start();
 
         //comment first: 2012-02-02T02:45:14Z
         //likes first: 2012-02-02T01:09:00.000Z
         //post first: 2012-02-02T02:46:56Z
+
+
+//        CSVReader csvReader = new CSVReader("[|]");
+//        try {
+//            HashMap<Long, CommentEventStream> test = csvReader.readCommentEventStreamCSVtoMap(producer);
+//        }catch (IOException e){
+//            e.printStackTrace();
+//        }
+
+
+
 
     }
 
