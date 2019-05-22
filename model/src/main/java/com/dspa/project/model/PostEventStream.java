@@ -45,9 +45,11 @@ public class PostEventStream {
     public int getPersonId() {
         return personId;
     }
+
     public String getCreationDate() {
         return creationDate;
     }
+
     public String getImageFile() {
         return imageFile;
     }
@@ -80,7 +82,7 @@ public class PostEventStream {
         return placeId;
     }
 
-    public Date getSentAt(){
+    public Date getSentAt() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
         Date d = null;
         try {
@@ -130,8 +132,9 @@ public class PostEventStream {
                 ", placeId=" + placeId +
                 '}';
     }
+
     @JsonPOJOBuilder(buildMethodName = "build")
-    public static class Builder{
+    public static class Builder {
         @JsonProperty("id")
         private int id;
         @JsonProperty("personId")
@@ -159,6 +162,7 @@ public class PostEventStream {
             this.id = id;
             return this;
         }
+
         public Builder personId(final int personId) {
             this.personId = personId;
             return this;
@@ -168,26 +172,32 @@ public class PostEventStream {
             this.creationDate = creationDate;
             return this;
         }
+
         public Builder imageFile(final String imageFile) {
             this.imageFile = imageFile;
             return this;
         }
+
         public Builder locationIP(final String locationIP) {
             this.locationIP = locationIP;
             return this;
         }
+
         public Builder browserUsed(final String browserUsed) {
             this.browserUsed = browserUsed;
             return this;
         }
+
         public Builder language(final String language) {
             this.language = language;
             return this;
         }
+
         public Builder content(final String content) {
             this.content = content;
             return this;
         }
+
         public Builder tags(final String tags) {
             this.tags = tags;
             return this;
@@ -197,12 +207,13 @@ public class PostEventStream {
             this.forumId = forumId;
             return this;
         }
+
         public Builder placeId(final int placeId) {
             this.placeId = placeId;
             return this;
         }
 
-        public PostEventStream build(){
+        public PostEventStream build() {
             return new PostEventStream(this);
         }
     }

@@ -17,16 +17,16 @@ public class Person {
     private final String browserUsed;
 
 
-    private Person(final Builder builder){
+    private Person(final Builder builder) {
 
         this.id = builder.id;
-        this.firstName=builder.firstName;
-        this.lastName=builder.lastName;
-        this.gender=builder.gender;
-        this.birthday=builder.birthday;
-        this.creationDate=builder.creationDate;
-        this.browserUsed=builder.browserUsed;
-        this.locationIP=builder.locationIP;
+        this.firstName = builder.firstName;
+        this.lastName = builder.lastName;
+        this.gender = builder.gender;
+        this.birthday = builder.birthday;
+        this.creationDate = builder.creationDate;
+        this.browserUsed = builder.browserUsed;
+        this.locationIP = builder.locationIP;
 
 
     }
@@ -104,7 +104,7 @@ public class Person {
 
     // BUILDER
 
-    public static class Builder{
+    public static class Builder {
 
         private long id;
         private String firstName;
@@ -116,47 +116,48 @@ public class Person {
         private String locationIP;
 
 
-
-        public Builder id(final long id){
-            this.id=id;
-            return this;
-        }
-        public Builder firstName(final String firstName){
-            this.firstName=firstName;
+        public Builder id(final long id) {
+            this.id = id;
             return this;
         }
 
-        public Builder lastName(final String lastName){
-            this.lastName=lastName;
-            return this;
-        }
-        public Builder gender(final String gender){
-            this.gender=gender;
+        public Builder firstName(final String firstName) {
+            this.firstName = firstName;
             return this;
         }
 
-        public Builder birthday(final Date birthday){
-            this.birthday=birthday;
+        public Builder lastName(final String lastName) {
+            this.lastName = lastName;
             return this;
         }
 
-        public Builder creationDate(final Date creationDate){
-            this.creationDate=creationDate;
+        public Builder gender(final String gender) {
+            this.gender = gender;
+            return this;
+        }
+
+        public Builder birthday(final Date birthday) {
+            this.birthday = birthday;
+            return this;
+        }
+
+        public Builder creationDate(final Date creationDate) {
+            this.creationDate = creationDate;
             return this;
         }
 
 
-        public Builder browserUsed(final String browserUsed){
-            this.browserUsed=browserUsed;
+        public Builder browserUsed(final String browserUsed) {
+            this.browserUsed = browserUsed;
             return this;
         }
 
-        public Builder locationIP(final String locationIP){
-            this.locationIP=locationIP;
+        public Builder locationIP(final String locationIP) {
+            this.locationIP = locationIP;
             return this;
         }
 
-        public Person build(){
+        public Person build() {
             return new Person(this);
         }
     }

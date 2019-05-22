@@ -10,9 +10,9 @@ public class CommentEventStreamConsumer {
     public static FlinkKafkaConsumer011<CommentEventStream> createCommentEventStreamConsumer(String topic, String kafkaAddress, String kafkaGroup) {
         Properties properties = new Properties();
         properties.setProperty("bootstrap.servers", kafkaAddress);
-        properties.setProperty("group.id",kafkaGroup);
+        properties.setProperty("group.id", kafkaGroup);
         FlinkKafkaConsumer011<CommentEventStream> consumer = new FlinkKafkaConsumer011<CommentEventStream>(
-                topic, new CommentStreamDeserializationSchema(),properties);
+                topic, new CommentStreamDeserializationSchema(), properties);
 
         return consumer;
     }

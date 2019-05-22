@@ -34,7 +34,7 @@ public class LikesEventStream {
         return creationDate;
     }
 
-    public Date getSentAt(){
+    public Date getSentAt() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
         Date d = null;
         try {
@@ -68,8 +68,9 @@ public class LikesEventStream {
                 ", creationDate='" + creationDate + '\'' +
                 '}';
     }
+
     @JsonPOJOBuilder(buildMethodName = "build")
-    public static class Builder{
+    public static class Builder {
         @JsonProperty("personId")
         private int personId;
         @JsonProperty("postId")
@@ -77,20 +78,22 @@ public class LikesEventStream {
         @JsonProperty("creationDate")
         private String creationDate;
 
-        public Builder personId(final int personId){
-            this.personId=personId;
-            return this;
-        }
-        public Builder postId(final int postId){
-            this.postId=postId;
-            return this;
-        }
-        public Builder creationDate(final String creationDate){
-            this.creationDate=creationDate;
+        public Builder personId(final int personId) {
+            this.personId = personId;
             return this;
         }
 
-        public LikesEventStream build(){
+        public Builder postId(final int postId) {
+            this.postId = postId;
+            return this;
+        }
+
+        public Builder creationDate(final String creationDate) {
+            this.creationDate = creationDate;
+            return this;
+        }
+
+        public LikesEventStream build() {
             return new LikesEventStream(this);
         }
 

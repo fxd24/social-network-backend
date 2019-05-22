@@ -1,23 +1,31 @@
 package com.dspa.project.model;
 
+
+import javax.persistence.*;
+import java.util.Date;
 import java.util.Objects;
 
+@Entity
+@Table(name = "forum")
 public class Forum {
 
-    private final long id;
-    private final String creationDate;
-    private final String title;
+    @Id
+    private Long id;
+
+    @Column(name = "creationDate")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date creationDate;
+
+    @Column(name = "title")
+    private String title;
 
 
-    private Forum(final Builder builder){
-        this.id = builder.id;
-        this.creationDate = builder.creationDate;
-        this.title = builder.title;
+    private Forum() {
     }
 
     // Getters
 
-    public String getCreationDate() {
+    public Date getCreationDate() {
         return creationDate;
     }
 
@@ -25,7 +33,7 @@ public class Forum {
         return title;
     }
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 
@@ -57,31 +65,6 @@ public class Forum {
     }
 
 
-    //  BUILDER
-
-    public static class Builder{
-        private long id;
-        private String creationDate;
-        private String title;
-
-
-        public Builder id(final long id){
-            this.id=id;
-            return this;
-        }
-        public Builder creationDate(final String creationDate){
-            this.creationDate=creationDate;
-            return this;
-        }
-        public Builder title(final String title){
-            this.title=title;
-            return this;
-        }
-
-        public Forum build(){
-            return new Forum(this);
-        }
-    }
 
 
 }

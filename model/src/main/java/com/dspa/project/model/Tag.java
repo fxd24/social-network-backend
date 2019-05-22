@@ -10,10 +10,10 @@ public class Tag {
     private final String name;
     private final String url;
 
-    private Tag(final Builder builder){
+    private Tag(final Builder builder) {
         this.id = builder.id;
-        this.name=builder.name;
-        this.url=builder.url;
+        this.name = builder.name;
+        this.url = builder.url;
 
     }
 
@@ -57,27 +57,28 @@ public class Tag {
 
     // Builder
 
-    public static class Builder{
+    public static class Builder {
 
         private long id;
         private String url;
         private String name;
 
-        public Builder id(final long id){
-            this.id=id;
-            return this;
-        }
-        public Builder url(final String url){
-            this.url=url;
+        public Builder id(final long id) {
+            this.id = id;
             return this;
         }
 
-        public Builder name(final String name){
-            this.name=name;
+        public Builder url(final String url) {
+            this.url = url;
             return this;
         }
 
-        public Tag build(){
+        public Builder name(final String name) {
+            this.name = name;
+            return this;
+        }
+
+        public Tag build() {
             return new Tag(this);
         }
     }

@@ -21,16 +21,16 @@ public class CommentEventStream {
     private final int reply_to_commentId;
     private final int placeId;
 
-    private CommentEventStream(final Builder builder){
+    private CommentEventStream(final Builder builder) {
         this.id = builder.id;
-        this.personId=builder.personId;
-        this.creationDate=builder.creationDate;
-        this.locationIP=builder.locationIP;
-        this.browserUsed=builder.browserUsed;
-        this.content=builder.content;
-        this.reply_to_postId=builder.reply_to_postId;
-        this.reply_to_commentId=builder.reply_to_commentId;
-        this.placeId=builder.placeId;
+        this.personId = builder.personId;
+        this.creationDate = builder.creationDate;
+        this.locationIP = builder.locationIP;
+        this.browserUsed = builder.browserUsed;
+        this.content = builder.content;
+        this.reply_to_postId = builder.reply_to_postId;
+        this.reply_to_commentId = builder.reply_to_commentId;
+        this.placeId = builder.placeId;
     }
 
     public int getId() {
@@ -70,7 +70,7 @@ public class CommentEventStream {
     }
 
     //TODO: duplicated across Stream objects. Clean this mess.
-    public Date getSentAt(){
+    public Date getSentAt() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
         Date d = null;
         try {
@@ -118,7 +118,7 @@ public class CommentEventStream {
     }
 
     @JsonPOJOBuilder(buildMethodName = "build")
-    public static class Builder{
+    public static class Builder {
         @JsonProperty("id")
         private int id;
         @JsonProperty("personId")
@@ -138,45 +138,52 @@ public class CommentEventStream {
         @JsonProperty("placeId")
         private int placeId;
 
-        public Builder id(final int id){
-            this.id=id;
-            return this;
-        }
-        public Builder personId(final int personId){
-            this.personId=personId;
+        public Builder id(final int id) {
+            this.id = id;
             return this;
         }
 
-        public Builder creationDate(final String creationDate){
-            this.creationDate=creationDate;
-            return this;
-        }
-        public Builder locationIP(final String locationIP){
-            this.locationIP=locationIP;
-            return this;
-        }
-        public Builder browserUsed(final String browserUsed){
-            this.browserUsed=browserUsed;
-            return this;
-        }
-        public Builder content(final String content){
-            this.content=content;
+        public Builder personId(final int personId) {
+            this.personId = personId;
             return this;
         }
 
-        public Builder reply_to_postId(final int reply_to_postId){
-            this.reply_to_postId=reply_to_postId;
+        public Builder creationDate(final String creationDate) {
+            this.creationDate = creationDate;
             return this;
         }
-        public Builder reply_to_commentId(final int reply_to_commentId){
-            this.reply_to_commentId=reply_to_commentId;
+
+        public Builder locationIP(final String locationIP) {
+            this.locationIP = locationIP;
             return this;
         }
-        public Builder placeId(final int placeId){
-            this.placeId=placeId;
+
+        public Builder browserUsed(final String browserUsed) {
+            this.browserUsed = browserUsed;
             return this;
         }
-        public CommentEventStream build(){
+
+        public Builder content(final String content) {
+            this.content = content;
+            return this;
+        }
+
+        public Builder reply_to_postId(final int reply_to_postId) {
+            this.reply_to_postId = reply_to_postId;
+            return this;
+        }
+
+        public Builder reply_to_commentId(final int reply_to_commentId) {
+            this.reply_to_commentId = reply_to_commentId;
+            return this;
+        }
+
+        public Builder placeId(final int placeId) {
+            this.placeId = placeId;
+            return this;
+        }
+
+        public CommentEventStream build() {
             return new CommentEventStream(this);
         }
     }

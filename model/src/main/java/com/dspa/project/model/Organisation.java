@@ -10,7 +10,7 @@ public class Organisation {
     private final String url; // is there a better way to store it?
 
 
-    private Organisation(final Builder builder){
+    private Organisation(final Builder builder) {
 
         this.id = builder.id;
         this.type = builder.type;
@@ -67,32 +67,34 @@ public class Organisation {
 
     // Builder
 
-    public static class Builder{
+    public static class Builder {
         private long id;
         private String type;
         private String name;
         private String url;
 
 
-        public Builder id(final long id){
-            this.id=id;
-            return this;
-        }
-        public Builder type(final String type){
-            this.type=type;
+        public Builder id(final long id) {
+            this.id = id;
             return this;
         }
 
-        public Builder creationDate(final String name){
-            this.name=name;
-            return this;
-        }
-        public Builder url(final String url){
-            this.url=url;
+        public Builder type(final String type) {
+            this.type = type;
             return this;
         }
 
-        public Organisation build(){
+        public Builder creationDate(final String name) {
+            this.name = name;
+            return this;
+        }
+
+        public Builder url(final String url) {
+            this.url = url;
+            return this;
+        }
+
+        public Organisation build() {
             return new Organisation(this);
         }
     }

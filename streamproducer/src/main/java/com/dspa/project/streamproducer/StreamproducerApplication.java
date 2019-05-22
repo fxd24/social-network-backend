@@ -37,7 +37,7 @@ public class StreamproducerApplication {
     //TODO: clean this duplicated mess
     public static void readCommentEventStreamCsvAndSendToTopic(StreamProducer producer) {
         CSVReader reader = new CSVReader("[|]");
-        final String FILE_PATH="../../1k-users-sorted/streams/comment_event_stream.csv";
+        final String FILE_PATH = "../../1k-users-sorted/streams/comment_event_stream.csv";
 
         final File csvFile = new File(FILE_PATH);
         if (!csvFile.exists()) {
@@ -56,7 +56,7 @@ public class StreamproducerApplication {
 
     public static void readLikesEventStreamCsvAndSendToTopic(StreamProducer producer) {
         CSVReader reader = new CSVReader("[|]");
-        final String FILE_PATH="../../1k-users-sorted/streams/likes_event_stream.csv";
+        final String FILE_PATH = "../../1k-users-sorted/streams/likes_event_stream.csv";
 
         final File csvFile = new File(FILE_PATH);
         if (!csvFile.exists()) {
@@ -75,7 +75,7 @@ public class StreamproducerApplication {
 
     public static void readPostEventStreamCsvAndSendToTopic(StreamProducer producer) {
         CSVReader reader = new CSVReader("[|]");
-        final String FILE_PATH="../../1k-users-sorted/streams/post_event_stream.csv";
+        final String FILE_PATH = "../../1k-users-sorted/streams/post_event_stream.csv";
 
         final File csvFile = new File(FILE_PATH);
         if (!csvFile.exists()) {
@@ -113,6 +113,7 @@ public class StreamproducerApplication {
                 public void onSuccess(SendResult<String, String> result) {
                     System.out.println("Sent message=[" + message + "] with offset=[" + result.getRecordMetadata().offset() + "]");
                 }
+
                 @Override
                 public void onFailure(Throwable ex) {
                     System.out.println("Unable to send message=[" + message + "] due to : " + ex.getMessage());

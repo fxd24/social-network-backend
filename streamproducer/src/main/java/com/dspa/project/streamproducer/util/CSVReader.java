@@ -54,7 +54,7 @@ public class CSVReader {
                         .build();
                 sleep.wait(last_timestamp, lineArray[2]);
                 last_timestamp = lineArray[2];
-                send(value, producer,commentTopicName);
+                send(value, producer, commentTopicName);
             }
 
         } finally {
@@ -123,12 +123,12 @@ public class CSVReader {
     }
 
     //TODO: look at the type Object to make the function cleaner
-    private void send(Object value, StreamproducerApplication.StreamProducer producer, String topicName){
+    private void send(Object value, StreamproducerApplication.StreamProducer producer, String topicName) {
         final ObjectMapper mapper = new ObjectMapper();
         try {
             String msg = mapper.writeValueAsString(value);
             //System.out.println(msg);
-            producer.sendMessage(msg,topicName);
+            producer.sendMessage(msg, topicName);
         } catch (IOException e) {
             e.printStackTrace();
         }

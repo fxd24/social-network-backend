@@ -6,7 +6,7 @@ import org.apache.flink.streaming.api.watermark.Watermark;
 
 import javax.annotation.Nullable;
 
-public class PostEventStreamTimestampAssigner implements AssignerWithPunctuatedWatermarks<PostEventStream>{
+public class PostEventStreamTimestampAssigner implements AssignerWithPunctuatedWatermarks<PostEventStream> {
 
     @Override
     public long extractTimestamp(PostEventStream element, long previousElementTimestamp) {
