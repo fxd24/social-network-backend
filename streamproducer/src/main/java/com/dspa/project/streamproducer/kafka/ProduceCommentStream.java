@@ -1,20 +1,21 @@
 package com.dspa.project.streamproducer.kafka;
 
+import com.dspa.project.model.CommentEventStream;
+import com.dspa.project.model.Stream;
 import com.dspa.project.streamproducer.StreamproducerApplication;
 import com.dspa.project.streamproducer.util.CSVReader;
+import javafx.util.Pair;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 
-import static com.dspa.project.streamproducer.util.Util.handleFileNotFoundException;
+import java.util.concurrent.PriorityBlockingQueue;
+
 
 public class ProduceCommentStream implements Runnable {
-    StreamproducerApplication.StreamProducer prod;
 
-    public ProduceCommentStream(StreamproducerApplication.StreamProducer producer) {
-        prod = producer;
+    PriorityBlockingQueue<Pair<Long,Stream>> queue;
+    public ProduceCommentStream(PriorityBlockingQueue<Pair<Long,Stream>> queue) {
+        this.queue = queue;
     }
 
     //TODO: clean this duplicated mess
@@ -23,10 +24,8 @@ public class ProduceCommentStream implements Runnable {
         CSVReader reader = new CSVReader("[|]");
         final String FILE_PATH = "../../1k-users-sorted/streams/comment_event_stream.csv";
 
-        final File csvFile = new File(FILE_PATH);
-        handleFileNotFoundException(csvFile);
         try {
-            reader.readCommentEventStreamCSV(new BufferedReader(new FileReader(csvFile)), prod);
+            reader.readCommentEventStreamCSV(FILE_PATH, queue);
         } catch (IOException e) {
             e.printStackTrace();
         }

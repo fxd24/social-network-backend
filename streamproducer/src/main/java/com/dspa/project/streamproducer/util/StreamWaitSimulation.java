@@ -10,7 +10,7 @@ public class StreamWaitSimulation {
 
 
     //@Value(value = "${speedup.factor}") //TODO: doesn't take the value
-    private int speedup_factor = 10000; //TODO: automate the speedup factor
+    private long speedup_factor = 10000L; //TODO: automate the speedup factor
 
 
     public void wait(String last_timestamp, String new_timestamp) {
@@ -40,24 +40,36 @@ public class StreamWaitSimulation {
 
     }
 
-    public void randomSleep() { //TODO: add more properties in the randomness range
-        Random random = new Random();
-        long time = (long) random.nextInt(300000); //this are 5 minutes max delay
-        //System.out.println("Random time choosen is " + time + " |"); //TODO:remove eventually
+    public void wait(Long last_timestamp, Long new_timestamp) {
+
+        Long waiting_time = 0L;
+        Long diff = last_timestamp - new_timestamp;
+        waiting_time = diff / speedup_factor;
         try {
-            TimeUnit.MILLISECONDS.sleep(time);
+            System.out.println("Waiting for " + waiting_time + " milliseconds"); //TODO: remove when tested
+            TimeUnit.MILLISECONDS.sleep(waiting_time);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+
+
     }
 
-    public void maySleepRandomAmountOfTime(){
+    public Long randomDelayNumber() { //TODO: add more properties in the randomness range
+        Random random = new Random();
+        return (long) random.nextInt(300000); //this are 5 minutes max delay
+
+
+    }
+
+    public Long maybeRandomDelayNumber(){
         Random random = new Random();
         int randomInt = random.nextInt(10);
         //sleeps for a random amount of time when randomInt is 1
         if(randomInt==1){
-            randomSleep();
+            return randomDelayNumber();
         }
+        return 0L;
 
     }
 }
