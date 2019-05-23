@@ -42,21 +42,19 @@ public class ActivepoststatisticsApplication {
     public static void doSomethingComment(){
         StreamExecutionEnvironment environment = StreamExecutionEnvironment.getExecutionEnvironment();
         CommentEventStreamConsumer consume = new CommentEventStreamConsumer();
-        FlinkKafkaConsumer011<CommentEventStream> consumer = consume.createCommentEventStreamConsumer("baeldung","localhost:9092", "bar"); //TODO: change to correct topic
+        FlinkKafkaConsumer011<CommentEventStream> consumer = consume.createCommentEventStreamConsumer("comment","localhost:9092", "bar"); //TODO: change to correct topic
         consumer.setStartFromEarliest(); //TODO: change this based on what is required
         consumer.assignTimestampsAndWatermarks(new CommentEventStreamTimestampAssigner()); //TODO: check if it works
 
         DataStream<CommentEventStream> inputStream = environment.addSource(consumer);
-//        inputStream.map(new MapFunction<CommentEventStream, String>(){
-//                            @Override
-//                            public String map(CommentEventStream commentEventStream) throws Exception {
-//                                //System.out.println(commentEventStream.toString());
-//                                return commentEventStream.toString();
-//                            }
-//                        }
-//        );
-
-
+        inputStream.map(new MapFunction<CommentEventStream, Long>(){
+                            @Override
+                            public Long map(CommentEventStream commentEventStream) throws Exception {
+                                //System.out.println(commentEventStream.toString());
+                                return commentEventStream.getSentAt().getTime();
+                            }
+                        }
+        ).print();
 //                .timeWindowAll(Time.hours(24))
 //                .addSink(flinkKafkaProducer);  //TODO: producer to send back some aggregated statistics
 
