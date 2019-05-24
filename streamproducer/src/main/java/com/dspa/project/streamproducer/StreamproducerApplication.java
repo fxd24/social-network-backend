@@ -48,8 +48,8 @@ public class StreamproducerApplication {
 
 
         commentThread.start();
-        likesThread.start();
-        postThread.start();
+        //likesThread.start();
+        //postThread.start();
 
         consThread.start();
 

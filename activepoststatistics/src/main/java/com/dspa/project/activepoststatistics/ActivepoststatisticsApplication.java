@@ -4,10 +4,15 @@ import com.dspa.project.model.CommentEventStream;
 import com.dspa.project.model.LikesEventStream;
 import com.dspa.project.model.PostEventStream;
 import flink.*;
+import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.java.functions.KeySelector;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011;
+import org.apache.flink.util.Collector;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -43,26 +48,66 @@ public class ActivepoststatisticsApplication {
         StreamExecutionEnvironment environment = StreamExecutionEnvironment.getExecutionEnvironment();
         CommentEventStreamConsumer consume = new CommentEventStreamConsumer();
         FlinkKafkaConsumer011<CommentEventStream> consumer = consume.createCommentEventStreamConsumer("comment","localhost:9092", "bar"); //TODO: change to correct topic
-        consumer.setStartFromEarliest(); //TODO: change this based on what is required
-        consumer.assignTimestampsAndWatermarks(new CommentEventStreamTimestampAssigner()); //TODO: check if it works
+        consumer.setStartFromLatest(); //TODO: change this based on what is required
+        consumer.assignTimestampsAndWatermarks(new CommentEventStreamTimestampAssigner(Time.milliseconds(300000))); //TODO: check if it works
+
 
         DataStream<CommentEventStream> inputStream = environment.addSource(consumer);
-        inputStream.map(new MapFunction<CommentEventStream, Long>(){
-                            @Override
-                            public Long map(CommentEventStream commentEventStream) throws Exception {
-                                //System.out.println(commentEventStream.toString());
-                                return commentEventStream.getSentAt().getTime();
-                            }
-                        }
-        ).print();
+//        inputStream.map(new MapFunction<CommentEventStream, Long>(){
+//                            @Override
+//                            public Long map(CommentEventStream commentEventStream) throws Exception {
+//                                //System.out.println(commentEventStream.toString());
+//                                return commentEventStream.getSentAt().getTime();
+//                            }
+//                        }
+//        ).print();
 //                .timeWindowAll(Time.hours(24))
 //                .addSink(flinkKafkaProducer);  //TODO: producer to send back some aggregated statistics
+
+        //inputStream.flatMap(new Tokenizer()).keyBy(0).timeWindow(Time.milliseconds(50)).sum(1).print();
+
+//        inputStream.keyBy(new KeySelector<CommentEventStream, Integer>() {
+//            @Override
+//            public Integer getKey(CommentEventStream commentEventStream) throws Exception {
+//                return commentEventStream.getReply_to_postId();
+//            }
+//        }).timeWindow(Time.milliseconds(1000));
+
+        inputStream
+
+                .flatMap(new SumCommentsByPostId()).keyBy(0).timeWindow(Time.milliseconds(1000)).sum(1).print(); //sum's up comments by post_id
 
 
         try {
             environment.execute();
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    public static class Tokenizer implements FlatMapFunction<CommentEventStream, Tuple2<String, Integer>> {
+
+        @Override
+        public void flatMap(CommentEventStream commentEventStream, Collector<Tuple2<String, Integer>> collector) throws Exception {
+            collector.collect(new Tuple2<>("comment",1));
+        }
+    }
+    public static class SumCommentsByPostId implements FlatMapFunction<CommentEventStream, Tuple2<Integer, Integer>> {
+        @Override
+        public void flatMap(CommentEventStream commentEventStream, Collector<Tuple2<Integer, Integer>> collector) throws Exception {
+            int postId = commentEventStream.getReply_to_postId();
+            if(postId != -1){
+                collector.collect(new Tuple2<>(postId,1));
+            }
+        }
+    }
+    public static class SumReplayToCommentsByCommentId implements FlatMapFunction<CommentEventStream, Tuple2<Integer, Integer>> {
+        @Override
+        public void flatMap(CommentEventStream commentEventStream, Collector<Tuple2<Integer, Integer>> collector) throws Exception {
+            int commentId = commentEventStream.getReply_to_commentId();
+            if(commentId != -1){
+                collector.collect(new Tuple2<>(commentId,1));
+            }
         }
     }
 
