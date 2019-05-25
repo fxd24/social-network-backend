@@ -2,7 +2,6 @@ package com.dspa.project.streamproducer;
 
 import com.dspa.project.model.CommentEventStream;
 import com.dspa.project.model.LikesEventStream;
-import com.dspa.project.model.PostEventStream;
 import com.dspa.project.model.Stream;
 import com.dspa.project.streamproducer.util.StreamWaitSimulation;
 import com.fasterxml.jackson.databind.ObjectMapper;

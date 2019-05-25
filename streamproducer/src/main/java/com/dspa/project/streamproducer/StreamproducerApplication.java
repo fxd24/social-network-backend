@@ -5,8 +5,6 @@ import com.dspa.project.model.Stream;
 import com.dspa.project.streamproducer.kafka.ProduceCommentStream;
 import com.dspa.project.streamproducer.kafka.ProduceLikesStream;
 import com.dspa.project.streamproducer.kafka.ProducePostStream;
-import com.dspa.project.streamproducer.util.StreamWaitSimulation;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.util.Pair;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
@@ -17,9 +15,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
-import util.*;
+import util.PairComparator;
 
-import java.io.IOException;
 import java.util.concurrent.PriorityBlockingQueue;
 
 @SpringBootApplication
@@ -48,8 +45,8 @@ public class StreamproducerApplication {
 
 
         commentThread.start();
-        //likesThread.start();
-        //postThread.start();
+        likesThread.start();
+        postThread.start();
 
         consThread.start();
 

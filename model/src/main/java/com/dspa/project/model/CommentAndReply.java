@@ -8,9 +8,9 @@ import javax.persistence.Table;
 @Table(name = "comment_and_reply")
 public class CommentAndReply {
 
-    @Id
-    private int commentId;
 
+    private int commentId;
+    @Id
     private int replyId;
 
     public int getCommentId() {

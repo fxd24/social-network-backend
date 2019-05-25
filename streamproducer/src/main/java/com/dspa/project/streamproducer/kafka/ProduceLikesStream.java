@@ -1,19 +1,11 @@
 package com.dspa.project.streamproducer.kafka;
 
-import com.dspa.project.model.CommentEventStream;
-import com.dspa.project.model.LikesEventStream;
 import com.dspa.project.model.Stream;
-import com.dspa.project.streamproducer.StreamproducerApplication;
 import com.dspa.project.streamproducer.util.CSVReader;
 import javafx.util.Pair;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.concurrent.PriorityBlockingQueue;
-
-import static com.dspa.project.streamproducer.util.Util.handleFileNotFoundException;
 
 public class ProduceLikesStream implements Runnable{
 

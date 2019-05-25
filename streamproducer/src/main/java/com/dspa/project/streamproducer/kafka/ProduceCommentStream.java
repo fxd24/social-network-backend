@@ -1,13 +1,10 @@
 package com.dspa.project.streamproducer.kafka;
 
-import com.dspa.project.model.CommentEventStream;
 import com.dspa.project.model.Stream;
-import com.dspa.project.streamproducer.StreamproducerApplication;
 import com.dspa.project.streamproducer.util.CSVReader;
 import javafx.util.Pair;
 
 import java.io.IOException;
-
 import java.util.concurrent.PriorityBlockingQueue;
 
 

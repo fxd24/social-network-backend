@@ -5,11 +5,7 @@ import com.dspa.project.model.CommentEventStream;
 import com.dspa.project.model.LikesEventStream;
 import com.dspa.project.model.PostEventStream;
 import com.dspa.project.model.Stream;
-import com.dspa.project.streamproducer.StreamproducerApplication;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.util.Pair;
-import org.springframework.beans.factory.annotation.Value;
-
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -17,8 +13,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.HashMap;
-import java.util.PriorityQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.regex.Pattern;
 
