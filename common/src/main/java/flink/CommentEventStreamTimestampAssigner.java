@@ -2,12 +2,8 @@ package flink;
 
 
 import com.dspa.project.model.CommentEventStream;
-import org.apache.flink.streaming.api.functions.AssignerWithPunctuatedWatermarks;
 import org.apache.flink.streaming.api.functions.timestamps.BoundedOutOfOrdernessTimestampExtractor;
-import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.api.windowing.time.Time;
-
-import javax.annotation.Nullable;
 
 
 public class CommentEventStreamTimestampAssigner extends BoundedOutOfOrdernessTimestampExtractor<CommentEventStream> {

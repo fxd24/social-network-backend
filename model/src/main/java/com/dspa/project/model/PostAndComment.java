@@ -5,10 +5,10 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "PostAndComment")
+@Table(name = "post_and_comment")
 public class PostAndComment {
 
-
+    @Id
     private int postId;
     private int commentId;
 

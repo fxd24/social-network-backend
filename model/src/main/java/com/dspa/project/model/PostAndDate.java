@@ -4,16 +4,21 @@ import javax.persistence.*;
 import java.util.Date;
 
 @Entity
-@Table(name = "PostAndDate")
+@Table(name = "post_and_date")
 public class PostAndDate {
     @Id
-    private Long id;
+    private Integer id;
 
     @Column(name = "lastUpdate")
     @Temporal(TemporalType.TIMESTAMP)
     private Date lastUpdate;
 
-    public Long getId() {
+//    public PostAndDate(Integer id, Date lastUpdate) {
+//        this.id = id;
+//        this.lastUpdate = lastUpdate;
+//    }
+
+    public Integer getId() {
         return id;
     }
 
@@ -21,11 +26,19 @@ public class PostAndDate {
         return lastUpdate;
     }
 
-    public void setId(Long id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 
     public void setLastUpdate(Date lastUpdate) {
         this.lastUpdate = lastUpdate;
+    }
+
+    @Override
+    public String toString() {
+        return "PostAndDate{" +
+                "id=" + id +
+                ", lastUpdate=" + lastUpdate +
+                '}';
     }
 }

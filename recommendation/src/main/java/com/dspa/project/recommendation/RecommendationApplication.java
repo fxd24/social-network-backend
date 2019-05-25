@@ -8,11 +8,10 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
-import org.springframework.context.annotation.ComponentScan;
 
 
-@SpringBootApplication(scanBasePackages = "com.dspa.project.model")
-@ComponentScan(basePackages = "com.dspa.project.model")
+
+@SpringBootApplication
 @EntityScan(basePackages = {"com.dspa.project.model"})
 public class RecommendationApplication implements CommandLineRunner {
 
@@ -20,6 +19,9 @@ public class RecommendationApplication implements CommandLineRunner {
 
     @Autowired
     ForumRepository repo;
+
+//    @Autowired
+//    PostAndDateRepository repo2;
 
     public static void main(String[] args) {
         SpringApplication.run(RecommendationApplication.class, args);
@@ -31,7 +33,9 @@ public class RecommendationApplication implements CommandLineRunner {
         log.info("StartApplication...");
 
         System.out.println("\nfindAll()");
-        repo.findAll().forEach(x -> System.out.println(x));
+        //repo.findAll().forEach(x -> System.out.println(x));
+
+        //repo2.findAll().forEach(x -> System.out.println(x));
 
     }
 

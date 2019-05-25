@@ -1,12 +1,14 @@
 package com.dspa.project.model;
 
 import javax.persistence.Entity;
+import javax.persistence.Id;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "CommentAndReply")
+@Table(name = "comment_and_reply")
 public class CommentAndReply {
 
+    @Id
     private int commentId;
 
     private int replyId;
