@@ -85,6 +85,14 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
 
         connectedStream
                 .assignTimestampsAndWatermarks(streamTimestampAssigner);
+        connectedStream.map(x->{
+            System.out.println("Serial");
+            return x;
+        });
+        connectedStream.map(x->{
+            System.out.println("PARALLEL FROCIO");
+            return x;
+        });
 //                .split(new OutputSelector<Stream>() {
 //                    @Override
 //                    public Iterable<Stream> select(Stream x) {
