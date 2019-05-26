@@ -5,16 +5,27 @@ import com.dspa.project.activepoststatistics.flink.PersistForLikes;
 import com.dspa.project.activepoststatistics.flink.PersistForPost;
 import com.dspa.project.activepoststatistics.repo.PostAndCommentRepository;
 import com.dspa.project.activepoststatistics.repo.PostAndDateRepository;
-import com.dspa.project.model.CommentEventStream;
-import com.dspa.project.model.LikesEventStream;
-import com.dspa.project.model.PostAndComment;
-import com.dspa.project.model.PostEventStream;
+import com.dspa.project.common.deserialization.CommentStreamDeserializationSchema;
+import com.dspa.project.common.deserialization.LikesEventStreamDeserializationSchema;
+import com.dspa.project.common.deserialization.PostEventStreamDeserializationSchema;
+import com.dspa.project.model.*;
 import flink.*;
+import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.functions.RichFlatMapFunction;
+import org.apache.flink.api.java.functions.KeySelector;
+import org.apache.flink.api.java.tuple.Tuple3;
 import org.apache.flink.api.java.tuple.Tuple5;
+import org.apache.flink.configuration.ConfigConstants;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.TimeCharacteristic;
+import org.apache.flink.streaming.api.collector.selector.OutputSelector;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011;
 import org.apache.flink.util.Collector;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +36,9 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 
@@ -46,37 +59,98 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
     }
     @Override
     public void run(String... args) {
+        /*******************  General Config *********************/
         StreamExecutionEnvironment environment = StreamExecutionEnvironment.getExecutionEnvironment();
+        environment.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+        StreamTimestampAssigner streamTimestampAssigner = new StreamTimestampAssigner(Time.milliseconds(300000)); //TODO: add to other streams and modify classes BoundedOutOfOrder...
         /*******************  CommentEventStream Config *********************/
-        FlinkKafkaConsumer011<CommentEventStream> consumeComment = CommentEventStreamConsumer.createCommentEventStreamConsumer("comment","localhost:9092", "bar"); //TODO: change to correct topic
+        FlinkKafkaConsumer011<Stream> consumeComment = StreamConsumer.createStreamConsumer("comment","localhost:9092", "bar", new CommentStreamDeserializationSchema()); //TODO: change to correct topic
         consumeComment.setStartFromLatest(); //TODO: change this based on what is required
-        consumeComment.assignTimestampsAndWatermarks(new CommentEventStreamTimestampAssigner(Time.milliseconds(300000))); //TODO: check if it works
-        DataStream<CommentEventStream> commentInputStream = environment.addSource(consumeComment);
-        PersistForComment persistForComment = new PersistForComment();
+        DataStream<Stream> commentInputStream = environment.addSource(consumeComment);
+        //PersistForComment persistForComment = new PersistForComment();
         /*******************  LikesEventStream Config *********************/
-        FlinkKafkaConsumer011<LikesEventStream> consumeLikes = LikesEventStreamConsumer.createLikesEventStreamConsumer("likes", "localhost:9092", "bar");
+        FlinkKafkaConsumer011<Stream> consumeLikes = StreamConsumer.createStreamConsumer("likes", "localhost:9092", "bar", new LikesEventStreamDeserializationSchema());
         consumeLikes.setStartFromLatest();
-        consumeLikes.assignTimestampsAndWatermarks(new LikesEventStreamTimestampAssigner()); //TODO: check if it works
-        DataStream<LikesEventStream> likesInputStream = environment.addSource(consumeLikes);
-        PersistForLikes persistForLikes = new PersistForLikes();
+        DataStream<Stream> likesInputStream = environment.addSource(consumeLikes);
+        //PersistForLikes persistForLikes = new PersistForLikes();
         /*******************  PostEventStream Config *********************/
-        FlinkKafkaConsumer011<PostEventStream> consumePost = PostEventStreamConsumer.createPostEventStreamConsumer("post", "localhost:9092", "bar");
+        FlinkKafkaConsumer011<Stream> consumePost = StreamConsumer.createStreamConsumer("post", "localhost:9092", "bar", new PostEventStreamDeserializationSchema());
         consumePost.setStartFromLatest();
-        consumePost.assignTimestampsAndWatermarks(new PostEventStreamTimestampAssigner()); //TODO: check if it works
-        DataStream<PostEventStream> postInputStream = environment.addSource(consumePost);
-        PersistForPost persistForPost = new PersistForPost();
+        DataStream<Stream> postInputStream = environment.addSource(consumePost);
+        //PersistForPost persistForPost = new PersistForPost();
         /***********    COOL STUFF FOR ANALYSIS  ****************/
+        //TODO: does NOT work in parallel. first a stream is read and then the next, but the first stram is unbounded...
+        /** Assign Timestamps and Watermarks on all the streams **/
+        DataStream<Stream> connectedStream = commentInputStream.union(likesInputStream,postInputStream);
 
+        connectedStream
+                .assignTimestampsAndWatermarks(streamTimestampAssigner);
+//                .split(new OutputSelector<Stream>() {
+//                    @Override
+//                    public Iterable<Stream> select(Stream x) {
+//                        List<Stream> output = new ArrayList<Stream>();
+//                        if (value % 2 == 0) {
+//                            output.add("even");
+//                        }
+//                        else {
+//                            output.add("odd");
+//                        }
+//                        return output;
+//                        if(x instanceof CommentEventStream){
+//                            output.add(x);
+//                        } else if(x instanceof LikesEventStream){
+//                            LikesEventStream tmp = (LikesEventStream) x;
+//                            System.out.println(tmp.toString());
+//                        } else{
+//                            PostEventStream tmp = (PostEventStream) x;
+//                            System.out.println(tmp.toString());
+//                        }
+//                    }
+//                });
         /** Comment Stream **/
+
+
             //SUM COMMENTS
-        commentInputStream.map(persistForComment).flatMap(new NumberOfComments()).keyBy(0).timeWindow(Time.seconds(60)).sum(3).print();
+
+
+//                .map(x->{
+//                    if(x instanceof CommentEventStream){
+//                        CommentEventStream tmp = (CommentEventStream) x;
+//                        System.out.println(tmp.toString());
+//                    } else if(x instanceof LikesEventStream){
+//                        LikesEventStream tmp = (LikesEventStream) x;
+//                        System.out.println(tmp.toString());
+//                    } else{
+//                        PostEventStream tmp = (PostEventStream) x;
+//                        System.out.println(tmp.toString());
+//                    }
+//                    return x;
+//                });
+                //.assignTimestampsAndWatermarks(water)
+                //.map(persistForComment)
+//                .keyBy(
+//                        new KeySelector<CommentEventStream, Integer>() {
+//                            @Override
+//                            public int getKey(CommentEventStream commentEventStream) throws Exception {
+//                                return commentEventStream.getReply_to_postId();
+//                            }
+//                        }
+//                )
+
+
+                //.keyBy(x->{if(x instanceof CommentEventStream){CommentEventStream tmp = (CommentEventStream) x; System.out.println(tmp.toString());return tmp.getReply_to_postId();} return -1;})
+                //.window(TumblingEventTimeWindows.of(Time.seconds(10)));
+                //.process(new NumberOfCommentsFunction())
+                //.sum(x->)
+                //.print();
+
             //SUM REPLY TO COMMENTS
-        commentInputStream.flatMap(new NumberOfReplies()).keyBy(0).timeWindow(Time.seconds(60)).sum(3).print();
+        //commentInputStream.flatMap(new NumberOfReplies()).keyBy(0).timeWindow(Time.seconds(60)).sum(3).print();
         /** Likes Stream **/
-        likesInputStream.map(persistForLikes);
+        //likesInputStream.map(persistForLikes);
 
         /** Post Stream **/
-        postInputStream.map(persistForPost);
+        //postInputStream.map(persistForPost);
 
 
         /******* EXECUTE THE COOL STUFF ABOVE ********/
@@ -91,15 +165,8 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
 
     /**********************************************     FLINK       ************************************************/
 
-    /**
-     * TODO: Partially task 1. Do most of the code in the classe in the Flink package.
-     * understand what groups are for and how to call them.
-     * Ideally we should store the results back into another topic and handle there the windowing
-     */
-
-
     //TODO: set time to the time when the window slides
-    public static class NumberOfComments implements FlatMapFunction<CommentEventStream, Tuple5<Integer, Date, Integer, Integer, String>> {
+    public static class NumberOfComments extends RichFlatMapFunction<CommentEventStream, Tuple5<Integer, Date, Integer, Integer, String>> {
 
         @Override
         public void flatMap(CommentEventStream commentEventStream, Collector<Tuple5<Integer, Date, Integer, Integer, String>> collector) throws Exception {
@@ -108,8 +175,25 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
             }
         }
     }
+    public static class NumberOfCommentsFunction extends ProcessWindowFunction<
+            CommentEventStream,
+            Tuple5<Integer, Date, Integer, Integer, String>,
+            Integer,
+            TimeWindow> {
+
+        @Override
+        public void process(Integer integer, Context context, Iterable<CommentEventStream> iterable, Collector<Tuple5<Integer, Date, Integer, Integer, String>> collector) throws Exception {
+            int i=0;
+            for(CommentEventStream commentEventStream : iterable){
+                i++;
+                if(commentEventStream.getReply_to_postId()!=-1){
+                    collector.collect(new Tuple5<>(commentEventStream.getReply_to_postId(),new Date(context.window().getEnd()),commentEventStream.getId(),i, "COMMENTS"));
+                }
+            }
+        }
+    }
     //TODO: set time to the time when the window slides
-    public static class NumberOfReplies implements FlatMapFunction<CommentEventStream, Tuple5<Integer, Date, Integer, Integer, String>> {
+    public static class NumberOfReplies extends RichFlatMapFunction<CommentEventStream, Tuple5<Integer, Date, Integer, Integer, String>> {
         private transient PostAndCommentRepository postAndCommentRepository;
         @Override
         public void flatMap(CommentEventStream commentEventStream, Collector<Tuple5<Integer, Date, Integer, Integer, String>> collector) throws Exception {
@@ -123,6 +207,21 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                 if(postAndCommentOptional.isPresent()){
                     collector.collect(new Tuple5<>(postAndCommentOptional.get().getPostId(),new Date(),commentEventStream.getReply_to_postId(),1, "REPLIES"));
                 }
+            }
+        }
+    }
+
+    public class ActivePost implements FilterFunction<PostAndDate>{
+        @Override
+        public boolean filter(PostAndDate postAndDate) throws Exception {
+
+            long time_diff = (new Date()).getTime()-postAndDate.getLastUpdate().getTime();
+            long hours12 = Time.hours(12).toMilliseconds();
+
+            if(time_diff<hours12){
+                return true;
+            }else{
+                return false;
             }
         }
     }

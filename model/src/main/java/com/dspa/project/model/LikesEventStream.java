@@ -10,7 +10,7 @@ import java.util.Date;
 import java.util.Objects;
 
 @JsonDeserialize(builder = LikesEventStream.Builder.class)
-public class LikesEventStream implements Stream {
+public class LikesEventStream extends Stream {
     private final int personId;
     private final int postId;
     private final String creationDate;

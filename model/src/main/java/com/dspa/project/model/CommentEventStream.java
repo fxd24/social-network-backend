@@ -10,7 +10,7 @@ import java.util.Date;
 import java.util.Objects;
 
 @JsonDeserialize(builder = CommentEventStream.Builder.class)
-public class CommentEventStream implements Stream{
+public class CommentEventStream extends Stream{
     private final int id;
     private final int personId;
     private final String creationDate;

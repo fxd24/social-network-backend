@@ -1,5 +1,5 @@
 package com.dspa.project.model;
 
-public interface Stream {
-    public String getCreationDate();
+public abstract class Stream {
+    //public String getCreationDate();
 }

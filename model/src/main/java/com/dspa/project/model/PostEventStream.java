@@ -10,7 +10,7 @@ import java.util.Date;
 import java.util.Objects;
 
 @JsonDeserialize(builder = PostEventStream.Builder.class)
-public class PostEventStream implements Stream {
+public class PostEventStream extends Stream {
     private final int id;
     private final int personId;
     private final String creationDate;
