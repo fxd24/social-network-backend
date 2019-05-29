@@ -12,13 +12,19 @@ import com.dspa.project.model.*;
 import flink.StreamConsumer;
 import flink.StreamTimestampAssigner;
 import org.apache.flink.api.common.functions.FilterFunction;
+import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.java.functions.KeySelector;
+import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.api.java.tuple.Tuple3;
+import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.tuple.Tuple5;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
+import org.apache.flink.streaming.api.functions.windowing.RichProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
@@ -32,8 +38,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
-import java.util.Date;
-import java.util.Optional;
+import java.util.*;
 
 
 @SpringBootApplication
@@ -56,7 +61,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
         /*******************  General Config *********************/
         StreamExecutionEnvironment environment = StreamExecutionEnvironment.getExecutionEnvironment();
         environment.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-        StreamTimestampAssigner streamTimestampAssigner = new StreamTimestampAssigner(Time.milliseconds(300000)); //TODO: add to other streams and modify classes BoundedOutOfOrder...
+        StreamTimestampAssigner streamTimestampAssigner = new StreamTimestampAssigner(Time.milliseconds(300000)); //TODO: modify to new value
         /*******************  CommentEventStream Config *********************/
         FlinkKafkaConsumer011<Stream> consumeComment = StreamConsumer.createStreamConsumer("comment","localhost:9092", "bar", new CommentStreamDeserializationSchema()); //TODO: change to correct topic
         consumeComment.setStartFromEarliest(); //TODO: change this based on what is required
@@ -72,8 +77,9 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
         consumePost.setStartFromEarliest();
         DataStream<Stream> postInputStream = environment.addSource(consumePost);
         PersistForPost persistForPost = new PersistForPost();
+
         /***********    COOL STUFF FOR ANALYSIS  ****************/
-        //TODO: does NOT work in parallel. first a stream is read and then the next, but the first stram is unbounded...
+
         /** Assign Timestamps and Watermarks on all the streams **/
         DataStream<Stream> connectedStream = commentInputStream.union(likesInputStream,postInputStream).assignTimestampsAndWatermarks(streamTimestampAssigner);;
 
@@ -84,24 +90,26 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                 .map(x->{
                     return (CommentEventStream) x;
                 })
+                .flatMap(new EarlyReplies())
                 .map(persistForComment);
 
-//        connectedStream
-//                .filter(new LikeEventStreamFilter())
-//                .map(x->{
-//                    return (LikesEventStream) x;
-//                })
-//                .map(persistForLikes);
-//
-//        connectedStream
-//                .filter(new PostEventStreamFilter())
-//                .map(x->{
-//                    return (PostEventStream) x;
-//                })
-//                .map(persistForPost);
+
+        connectedStream
+                .filter(new LikeEventStreamFilter())
+                .map(x->{
+                    return (LikesEventStream) x;
+                })
+                .map(persistForLikes);
+
+
+        connectedStream
+                .filter(new PostEventStreamFilter())
+                .map(x->{
+                    return (PostEventStream) x;
+                })
+                .map(persistForPost);
 
         /** Comment Stats **/
-            //SUM COMMENTS
         commentEventStream
                 .filter(new CommentFilter())
                 .map(x->{
@@ -122,33 +130,34 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                 .print();
 
         /** Replies Stats **/
-//        DataStream<CommentEventStream> replyEventStream =
-//                connectedStream
-//                        .filter(new ReplyFilter())
-//                        .map(x->{
-//                            System.out.println(x.toString());
-//                            return (CommentEventStream) x;
-//                        });
+        commentEventStream
+                .filter(new ReplyFilter())
+                .map(x->{
+                    //System.out.println("Mapping"+x.toString());
+                    return (CommentEventStream) x;
+                })
 
-
-                //.map(persistForComment)
-//                .keyBy(
-//                        new KeySelector<CommentEventStream, Integer>() {
-//                            @Override
-//                            public int getKey(CommentEventStream commentEventStream) throws Exception {
-//                                return commentEventStream.getReply_to_postId();
-//                            }
-//                        }
-//                )
-
-
-            //SUM REPLY TO COMMENTS
-        //commentInputStream.flatMap(new NumberOfReplies()).keyBy(0).timeWindow(Time.seconds(60)).sum(3).print();
-        /** Likes Stream **/
-        //likesInputStream.map(persistForLikes);
+                .keyBy(
+                        new KeySelector<CommentEventStream, Integer>() {
+                            @Override
+                            public Integer getKey(CommentEventStream commentEventStream) throws Exception {
+                                //System.out.println("Selecting key");
+                                return commentEventStream.getReply_to_postId();
+                            }
+                        }
+                )
+                .window(TumblingEventTimeWindows.of(Time.minutes(30)))
+                .process(new NumberOfRepliesFunction())
+                .print();
 
         /** Post Stream **/
-        //postInputStream.map(persistForPost);
+        connectedStream
+                .flatMap(new UserEngagedWithPost())
+                .keyBy(0)
+                .window(TumblingEventTimeWindows.of(Time.hours(1)))
+                .process(new UserEngagedWithPostFunction())
+                .print();
+
 
 
         /******* EXECUTE THE COOL STUFF ABOVE ********/
@@ -158,36 +167,10 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
             e.printStackTrace();
         }
 
-//                .map(x->{
-//                    if(x instanceof CommentEventStream){
-//                        CommentEventStream tmp = (CommentEventStream) x;
-//                        System.out.println(tmp.toString());
-//                    } else if(x instanceof LikesEventStream){
-//                        LikesEventStream tmp = (LikesEventStream) x;
-//                        System.out.println(tmp.toString());
-//                    } else{
-//                        PostEventStream tmp = (PostEventStream) x;
-//                        System.out.println(tmp.toString());
-//                    }
-//                    return x;
-//                });
-        //.assignTimestampsAndWatermarks(water)
-
-
     }
 
     /**********************************************     FLINK       ************************************************/
 
-    //TODO: set time to the time when the window slides
-    public static class NumberOfComments extends RichFlatMapFunction<CommentEventStream, Tuple5<Integer, Date, Integer, Integer, String>> {
-
-        @Override
-        public void flatMap(CommentEventStream commentEventStream, Collector<Tuple5<Integer, Date, Integer, Integer, String>> collector) throws Exception {
-            if(commentEventStream.getReply_to_postId()!=-1){
-                collector.collect(new Tuple5<>(commentEventStream.getReply_to_postId(),new Date(),commentEventStream.getId(),1, "COMMENTS"));
-            }
-        }
-    }
     public class NumberOfCommentsFunction extends ProcessWindowFunction<
             CommentEventStream,
             Tuple5<Integer, Date, Integer, Integer, String>,
@@ -201,18 +184,62 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
             for(CommentEventStream commentEventStream : iterable){
                 i++;
                 if(commentEventStream.getReply_to_postId()!=-1){
-
-                    collector.collect(new Tuple5<>(commentEventStream.getReply_to_postId(),new Date(context.window().getEnd()),commentEventStream.getId(),i, "COMMENTS"));
+                    //System.out.println("Is the post active? "+IsPostActive.isPostActive(context, commentEventStream.getReply_to_postId()));
+                    if(IsPostActive.isPostActive(context, commentEventStream.getReply_to_postId())) {
+                        collector.collect(new Tuple5<>(commentEventStream.getReply_to_postId(), new Date(context.window().getEnd()), commentEventStream.getId(), i, "COMMENTS"));
+                    }
                 }
             }
         }
     }
+
+    public class EarlyReplies extends RichFlatMapFunction<CommentEventStream, CommentEventStream>{
+        private ArrayList<CommentEventStream> repliesWithNoPostId;
+        @Override
+        public void open(Configuration parameters) throws Exception {
+            //super.open(parameters);
+            repliesWithNoPostId = new ArrayList<>();
+        }
+
+        @Override
+        public void flatMap(CommentEventStream commentEventStream, Collector<CommentEventStream> collector) throws Exception {
+            PostAndCommentRepository postAndCommentRepository = SpringBeansUtil.getBean(PostAndCommentRepository.class);
+
+            if(commentEventStream.getReply_to_postId()==-1){ //is a reply
+                checkUnmappedReplies(collector, postAndCommentRepository);
+
+                Optional<PostAndComment> postAndComment = postAndCommentRepository.findById(commentEventStream.getReply_to_commentId());
+                if(postAndComment.isPresent()){
+                    collector.collect(commentEventStream);
+                } else {
+                    //System.out.println("Reply has no mapping");
+                    repliesWithNoPostId.add(commentEventStream);
+                }
+            } else{ //is a comment
+                collector.collect(commentEventStream);
+            }
+
+        }
+
+        private void checkUnmappedReplies(Collector<CommentEventStream> collector, PostAndCommentRepository postAndCommentRepository){
+            for(CommentEventStream commentEventStream : repliesWithNoPostId){
+                Optional<PostAndComment> postAndComment = postAndCommentRepository.findById(commentEventStream.getReply_to_commentId());
+                if(postAndComment.isPresent()){
+                    System.out.println("YESSSSSS   Reply now has a mapping");
+                    collector.collect(commentEventStream);
+                    repliesWithNoPostId.remove(commentEventStream);
+                }
+            }
+        }
+    }
+
     public class NumberOfRepliesFunction extends ProcessWindowFunction<
-            CommentEventStream,
-            Tuple5<Integer, Date, Integer, Integer, String>,
-            Integer,
-            TimeWindow> {
+                CommentEventStream,
+                Tuple5<Integer, Date, Integer, Integer, String>,
+                Integer,
+                TimeWindow> {
         private transient PostAndCommentRepository postAndCommentRepository;
+
         @Override
         public void process(Integer integer, Context context, Iterable<CommentEventStream> iterable, Collector<Tuple5<Integer, Date, Integer, Integer, String>> collector) throws Exception {
             int i=0;
@@ -222,43 +249,96 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
             Optional<PostAndComment> postAndComment;
             for(CommentEventStream commentEventStream : iterable){
                 i++;
-                postAndComment = postAndCommentRepository.findById(commentEventStream.getReply_to_postId());
+                postAndComment = postAndCommentRepository.findById(commentEventStream.getReply_to_commentId());
+                //System.out.println("Maybe collecting. The value of Optional is: "+postAndComment.isPresent());
+                //TODO: ABSOLUTELY CHANGE
+
                 if(postAndComment.isPresent()){
-                    collector.collect(new Tuple5<>(postAndComment.get().getPostId(),new Date(context.window().getEnd()),commentEventStream.getId(),i, "REPLIES"));
+                    //System.out.println("Is the post active? "+IsPostActive.isPostActive(context, postAndComment.get().getPostId()));
+                    if(IsPostActive.isPostActive(context, postAndComment.get().getPostId())){
+                        collector.collect(new Tuple5<>(postAndComment.get().getPostId(),new Date(context.window().getEnd()),commentEventStream.getId(),i, "REPLIES"));
+                    }
                 }
-            }
-        }
-    }
-    //TODO: set time to the time when the window slides
-    public static class NumberOfReplies extends RichFlatMapFunction<CommentEventStream, Tuple5<Integer, Date, Integer, Integer, String>> {
-        private transient PostAndCommentRepository postAndCommentRepository;
-        @Override
-        public void flatMap(CommentEventStream commentEventStream, Collector<Tuple5<Integer, Date, Integer, Integer, String>> collector) throws Exception {
-            if(commentEventStream.getReply_to_commentId()!=-1){
-                if(postAndCommentRepository==null){
-                    postAndCommentRepository = SpringBeansUtil.getBean(PostAndCommentRepository.class);
-                }
-                Optional<PostAndComment> postAndCommentOptional = postAndCommentRepository.findById(commentEventStream.getId());
 
-                //TODO: ABSOLUTELY CORRECT HERE
-                if(postAndCommentOptional.isPresent()){
-                    collector.collect(new Tuple5<>(postAndCommentOptional.get().getPostId(),new Date(),commentEventStream.getReply_to_postId(),1, "REPLIES"));
-                }
             }
         }
     }
 
-    public class ActivePost implements FilterFunction<PostAndDate>{
-        @Override
-        public boolean filter(PostAndDate postAndDate) throws Exception {
+    public static class IsPostActive{
+        public static boolean isPostActive(ProcessWindowFunction.Context context, Integer postId){
 
-            long time_diff = (new Date()).getTime()-postAndDate.getLastUpdate().getTime();
+            PostAndDateRepository postAndDateRepository = SpringBeansUtil.getBean(PostAndDateRepository.class);
+
+            long currentTime = context.window().maxTimestamp();
+            //System.out.println("The current time is: "+currentTime);
+            long postTime = postAndDateRepository.findById(postId).get().getLastUpdate().getTime();
+            //System.out.println("The post time is: "+postTime);
             long hours12 = Time.hours(12).toMilliseconds();
 
-            if(time_diff<hours12){
+            if((postTime+hours12)>currentTime){
                 return true;
-            }else{
+            }else {
                 return false;
+            }
+
+        }
+    }
+    public static class UserEngagedWithPost implements FlatMapFunction<Stream, Tuple3<Integer, Integer, Integer>> {
+        private transient PostAndCommentRepository postAndCommentRepository;
+        @Override
+        public void flatMap(Stream stream, Collector<Tuple3<Integer, Integer, Integer>> collector) throws Exception {
+
+            if(stream instanceof CommentEventStream){
+                CommentEventStream tmp = (CommentEventStream) stream;
+                //System.out.println(tmp.toString());
+                int commentId = tmp.getReply_to_commentId();
+                if(commentId != -1){
+                    if(postAndCommentRepository==null){
+                        postAndCommentRepository = SpringBeansUtil.getBean(PostAndCommentRepository.class);
+                    }
+                    Optional<PostAndComment> postAndCommentOptional = postAndCommentRepository.findById(commentId);
+                    if(postAndCommentOptional.isPresent()){
+                        collector.collect(new Tuple3<>(postAndCommentOptional.get().getPostId(),tmp.getPersonId(),1));
+                    }
+
+                } else {
+                    collector.collect(new Tuple3<>(tmp.getReply_to_postId(),tmp.getPersonId(),1));
+                }
+
+            } else if(stream instanceof LikesEventStream){
+                LikesEventStream tmp = (LikesEventStream) stream;
+                collector.collect(new Tuple3<>(tmp.getPostId(),tmp.getPersonId(),1));
+            } else{
+                //PostEventStream tmp = (PostEventStream) stream;
+                //System.out.println(tmp.toString());
+                //TODO: probably do nothing here
+            }
+        }
+    }
+
+    public class UserEngagedWithPostFunction extends ProcessWindowFunction<
+            Tuple3<Integer, Integer, Integer>,
+            Tuple4<Integer, Date, Integer, String>,
+            Tuple,
+            TimeWindow> {
+
+
+        @Override
+        public void process(Tuple integer, Context context, Iterable<Tuple3<Integer, Integer, Integer>> iterable, Collector<Tuple4<Integer, Date, Integer, String>> collector) throws Exception {
+            int i=0;
+            Set<Integer> userIds = new HashSet<>();
+            for(Tuple3<Integer, Integer, Integer> t : iterable){
+                userIds.add(t.f1);
+                //System.out.println(t.f0+" should be the same ");
+            }
+            //if(IsPostActive.isPostActive(context, postAndComment.get().getPostId())){
+//            for(int j=0; iterable.iterator().hasNext(); j++){
+//TODO: check if it is the correct post id and also that your assumption is correct
+//                System.out.println(iterable.iterator().next().f0);
+//
+//            }
+            if(IsPostActive.isPostActive(context, iterable.iterator().next().f0)) {
+                collector.collect(new Tuple4<>(iterable.iterator().next().f0, new Date(context.window().getEnd()), userIds.size(), "USER ENGAGED WITH POST"));
             }
         }
     }
@@ -288,40 +368,11 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
             return (stream.getReply_to_postId()!=-1);
         }
     }
-    public class ReplyFilter implements FilterFunction<Stream> {
+    public class ReplyFilter implements FilterFunction<CommentEventStream> {
         @Override
-        public boolean filter(Stream stream) throws Exception {
-            return (stream instanceof CommentEventStream) && (((CommentEventStream) stream).getReply_to_commentId()!=-1);
+        public boolean filter(CommentEventStream stream) throws Exception {
+            return stream.getReply_to_commentId()!=-1;
         }
     }
-
-//    public static class Tokenizer implements FlatMapFunction<CommentEventStream, Tuple2<String, Integer>> {
-//        @Override
-//        public void flatMap(CommentEventStream commentEventStream, Collector<Tuple2<String, Integer>> collector) throws Exception {
-//            collector.collect(new Tuple2<>("comment",1));
-//        }
-//    }
-//
-//
-//    public static class SumCommentsByPostId implements FlatMapFunction<CommentEventStream, Tuple2<Integer, Integer>> {
-//        @Override
-//        public void flatMap(CommentEventStream commentEventStream, Collector<Tuple2<Integer, Integer>> collector) throws Exception {
-//            int postId = commentEventStream.getReply_to_postId();
-//            if(postId != -1){
-//                collector.collect(new Tuple2<>(postId,1));
-//            }
-//        }
-//    }
-//    public static class SumReplayToCommentsByCommentId implements FlatMapFunction<CommentEventStream, Tuple2<Integer, Integer>> {
-//        @Override
-//        public void flatMap(CommentEventStream commentEventStream, Collector<Tuple2<Integer, Integer>> collector) throws Exception {
-//            int commentId = commentEventStream.getReply_to_commentId();
-//            if(commentId != -1){
-//                collector.collect(new Tuple2<>(commentId,1));
-//            }
-//        }
-//    }
-
-
 
 }

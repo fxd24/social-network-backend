@@ -10,6 +10,8 @@ import org.apache.flink.api.common.functions.MapFunction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 @Component
 public class PersistForPost implements MapFunction<PostEventStream,PostEventStream> {
     @Autowired
@@ -33,10 +35,21 @@ public class PersistForPost implements MapFunction<PostEventStream,PostEventStre
             commentAndReplyRepository = SpringBeansUtil.getBean(CommentAndReplyRepository.class);
         }
 
-        if(postAndDateRepository!=null){
+        Optional<PostAndDate> postAndDateOptional = postAndDateRepository.findById(postEventStream.getId());
+        if(postAndDateOptional.isPresent()){
+            //System.out.println("PRINT updating the value PersistForPost");
+            //postAndDateRepository.setLastUpdate(postEventStream.getId(),postEventStream.getSentAt());
             postAndDate.setId(postEventStream.getId());
             postAndDate.setLastUpdate(postEventStream.getSentAt());
             postAndDateRepository.save(postAndDate);
+        }else{
+            //System.out.println("PRINT SAVING the value PersistForPost");
+            postAndDate.setId(postEventStream.getId());
+            postAndDate.setLastUpdate(postEventStream.getSentAt());
+            postAndDateRepository.save(postAndDate);
+        }
+        if(postAndDateRepository!=null){
+
         }
 
         return postEventStream;

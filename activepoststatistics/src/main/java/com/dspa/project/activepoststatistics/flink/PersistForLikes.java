@@ -10,6 +10,8 @@ import org.apache.flink.api.common.functions.MapFunction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
+
 @Component
 public class PersistForLikes implements MapFunction<LikesEventStream,LikesEventStream> {
 
@@ -36,11 +38,20 @@ public class PersistForLikes implements MapFunction<LikesEventStream,LikesEventS
         }
 
         if(postAndDateRepository!=null){
-            postAndDate.setId(likesEventStream.getPostId());
-            postAndDate.setLastUpdate(likesEventStream.getSentAt());
-            postAndDateRepository.save(postAndDate);
+            Optional<PostAndDate> postAndDateOptional = postAndDateRepository.findById(likesEventStream.getPostId());
+            if(postAndDateOptional.isPresent()){
+                //System.out.println("PRINT updating the value PersistForLikes");
+                //postAndDateRepository.setLastUpdate(likesEventStream.getPostId(),likesEventStream.getSentAt());
+                postAndDate.setId(likesEventStream.getPostId());
+                postAndDate.setLastUpdate(likesEventStream.getSentAt());
+                postAndDateRepository.save(postAndDate);
+            }else{
+                //System.out.println("PRINT SAVING the value PersistForLikes");
+                postAndDate.setId(likesEventStream.getPostId());
+                postAndDate.setLastUpdate(likesEventStream.getSentAt());
+                postAndDateRepository.save(postAndDate);
+            }
         }
-
         return likesEventStream;
     }
 }

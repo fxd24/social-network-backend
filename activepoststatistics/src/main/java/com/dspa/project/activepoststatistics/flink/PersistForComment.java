@@ -50,6 +50,8 @@ public class PersistForComment implements MapFunction<CommentEventStream, Commen
 
         if(postAndDateRepository != null && postAndCommentRepository!= null && commentAndReplyRepository!=null) {
             if(commentEventStream.getReply_to_postId()!=-1) {
+                //System.out.println("PRINT SAVING the value");
+
                 postAndDate.setId(commentEventStream.getReply_to_postId());
                 postAndDate.setLastUpdate(commentEventStream.getSentAt());
                 postAndDateRepository.save(postAndDate);
@@ -60,8 +62,10 @@ public class PersistForComment implements MapFunction<CommentEventStream, Commen
 
                 postAndCommentRepository.save(postAndComment);
             } else if(commentEventStream.getReply_to_commentId()!=-1){
+                //System.out.println("PRINT SAVING the value");
 
-                Optional<PostAndComment> postAndCommentOptional = postAndCommentRepository.findById(commentEventStream.getId());
+                Optional<PostAndComment> postAndCommentOptional = postAndCommentRepository.findById(commentEventStream.getReply_to_commentId());
+                if(!postAndCommentOptional.isPresent()) System.out.println("The value of the post_id of the reply is not yet stored");
                 if(postAndCommentOptional.isPresent()){
                     postAndDate.setId(postAndCommentOptional.get().getPostId());
                     postAndDate.setLastUpdate(commentEventStream.getSentAt());
