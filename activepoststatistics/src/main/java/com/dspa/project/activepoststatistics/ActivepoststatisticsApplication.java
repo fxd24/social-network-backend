@@ -81,7 +81,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
         /***********    COOL STUFF FOR ANALYSIS  ****************/
 
         /** Assign Timestamps and Watermarks on all the streams **/
-        DataStream<Stream> connectedStream = commentInputStream.union(likesInputStream,postInputStream).assignTimestampsAndWatermarks(streamTimestampAssigner);;
+        DataStream<Stream> connectedStream = commentInputStream.union(likesInputStream,postInputStream).assignTimestampsAndWatermarks(streamTimestampAssigner);
 
         /** Persist stream information **/
         DataStream<CommentEventStream> commentEventStream =
