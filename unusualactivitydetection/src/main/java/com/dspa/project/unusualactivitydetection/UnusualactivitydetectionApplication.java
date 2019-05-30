@@ -46,7 +46,7 @@ public class UnusualactivitydetectionApplication implements CommandLineRunner {
         environment.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
         StreamTimestampAssigner streamTimestampAssigner = new StreamTimestampAssigner(Time.milliseconds(300000)); //TODO: modify to new value
         /*******************  CommentEventStream Config *********************/
-        FlinkKafkaConsumer011<Stream> consumeComment = StreamConsumer.createStreamConsumer("comment","localhost:9092", "unusual", new CommentStreamDeserializationSchema()); //TODO: change to correct topic
+        FlinkKafkaConsumer011<Stream> consumeComment = StreamConsumer.createStreamConsumer("comment","localhost:9092", "unusual", new CommentStreamDeserializationSchema());
         consumeComment.setStartFromEarliest(); //TODO: change this based on what is required
         DataStream<Stream> commentInputStream = environment.addSource(consumeComment);
         /*******************  LikesEventStream Config *********************/

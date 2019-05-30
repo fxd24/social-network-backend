@@ -61,19 +61,19 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
         /*******************  General Config *********************/
         StreamExecutionEnvironment environment = StreamExecutionEnvironment.getExecutionEnvironment();
         environment.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-        StreamTimestampAssigner streamTimestampAssigner = new StreamTimestampAssigner(Time.milliseconds(300000)); //TODO: modify to new value
+        StreamTimestampAssigner streamTimestampAssigner = new StreamTimestampAssigner(Time.milliseconds(300000));
         /*******************  CommentEventStream Config *********************/
-        FlinkKafkaConsumer011<Stream> consumeComment = StreamConsumer.createStreamConsumer("comment","localhost:9092", "bar", new CommentStreamDeserializationSchema()); //TODO: change to correct topic
+        FlinkKafkaConsumer011<Stream> consumeComment = StreamConsumer.createStreamConsumer("comment","localhost:9092", "activestats", new CommentStreamDeserializationSchema()); //TODO: change to correct topic
         consumeComment.setStartFromEarliest(); //TODO: change this based on what is required
         DataStream<Stream> commentInputStream = environment.addSource(consumeComment);
         PersistForComment persistForComment = new PersistForComment();
         /*******************  LikesEventStream Config *********************/
-        FlinkKafkaConsumer011<Stream> consumeLikes = StreamConsumer.createStreamConsumer("likes", "localhost:9092", "bar", new LikesEventStreamDeserializationSchema());
+        FlinkKafkaConsumer011<Stream> consumeLikes = StreamConsumer.createStreamConsumer("likes", "localhost:9092", "activestats", new LikesEventStreamDeserializationSchema());
         consumeLikes.setStartFromEarliest();
         DataStream<Stream> likesInputStream = environment.addSource(consumeLikes);
         PersistForLikes persistForLikes = new PersistForLikes();
         /*******************  PostEventStream Config *********************/
-        FlinkKafkaConsumer011<Stream> consumePost = StreamConsumer.createStreamConsumer("post", "localhost:9092", "bar", new PostEventStreamDeserializationSchema());
+        FlinkKafkaConsumer011<Stream> consumePost = StreamConsumer.createStreamConsumer("post", "localhost:9092", "activestats", new PostEventStreamDeserializationSchema());
         consumePost.setStartFromEarliest();
         DataStream<Stream> postInputStream = environment.addSource(consumePost);
         PersistForPost persistForPost = new PersistForPost();

@@ -3,17 +3,27 @@ package com.dspa.project.recommendation;
 import com.dspa.project.common.deserialization.CommentStreamDeserializationSchema;
 import com.dspa.project.common.deserialization.LikesEventStreamDeserializationSchema;
 import com.dspa.project.common.deserialization.PostEventStreamDeserializationSchema;
+import com.dspa.project.model.CommentEventStream;
 import com.dspa.project.model.LikesEventStream;
 import com.dspa.project.model.Stream;
 import com.dspa.project.recommendation.repository.ForumRepository;
 import flink.StreamConsumer;
 import flink.StreamTimestampAssigner;
+import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.api.java.tuple.Tuple4;
+import org.apache.flink.api.java.tuple.Tuple5;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
+import org.apache.flink.streaming.api.functions.windowing.RichProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011;
+import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,9 +33,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.ConfigurableApplicationContext;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 
 @SpringBootApplication
@@ -47,7 +55,7 @@ public class RecommendationApplication implements CommandLineRunner {
         environment.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
         StreamTimestampAssigner streamTimestampAssigner = new StreamTimestampAssigner(Time.milliseconds(300000)); //TODO: modify to new value
         /*******************  CommentEventStream Config *********************/
-        FlinkKafkaConsumer011<Stream> consumeComment = StreamConsumer.createStreamConsumer("comment","localhost:9092", "recommender", new CommentStreamDeserializationSchema()); //TODO: change to correct topic
+        FlinkKafkaConsumer011<Stream> consumeComment = StreamConsumer.createStreamConsumer("comment","localhost:9092", "recommender", new CommentStreamDeserializationSchema());
         consumeComment.setStartFromEarliest(); //TODO: change this based on what is required
         DataStream<Stream> commentInputStream = environment.addSource(consumeComment);
 
@@ -65,13 +73,17 @@ public class RecommendationApplication implements CommandLineRunner {
 
         int[] personIds = {47, 192, 265, 395, 434, 581, 650, 724, 838, 913};
 
+        Map<Integer, Map<Integer,Integer>> userAndSimilarUserCount = new HashMap<>(); //<User for recommendation, Tuple2<Possible similar user, count of how many equal likes they have>>
+        for(int i : personIds){
+            userAndSimilarUserCount.put(i,new HashMap<>());
+        }
         likesInputStream
                 .assignTimestampsAndWatermarks(streamTimestampAssigner)
                 .keyBy(x->{return ((LikesEventStream) x).getPersonId();})
                 .window(SlidingEventTimeWindows.of(Time.hours(4),Time.hours(1)))
-//                .process()
-//                .print()
-                  ;
+                .process(new RecommendationFunction(userAndSimilarUserCount))
+                .print()
+                ;
         /******* EXECUTE THE COOL STUFF ABOVE ********/
         try {
             environment.execute();
@@ -80,6 +92,84 @@ public class RecommendationApplication implements CommandLineRunner {
         }
 
 
+    }
+
+    public class RecommendationFunction extends ProcessWindowFunction<
+            Stream,
+            Tuple4<Integer, Date, Map<Integer, Integer>, String>,
+            Integer,
+            TimeWindow> {
+        private final Map<Integer, Map<Integer,Integer>> userAndSimilarUserCount;
+
+        public RecommendationFunction(Map<Integer, Map<Integer, Integer>> userAndSimilarUserCount) {
+            this.userAndSimilarUserCount = userAndSimilarUserCount;
+        }
+
+        @Override
+        public void process(Integer integer, Context context, Iterable<Stream> iterable, Collector<Tuple4<Integer, Date, Map<Integer, Integer>, String>> collector) throws Exception {
+            Map<Integer, List<Integer>> postWithUserLikes = new HashMap<>();
+            Map<Integer, List<Integer>> userWithPostHeLikes = new HashMap<>();
+            //Map<Integer, Map<Integer,Integer>> userAndSimilarUserCount = this.userAndSimilarUserCount;//new HashMap<>(); //<User for recommendation, Tuple2<Possible similar user, count of how many equal likes they have>>
+
+            Integer postId, userId;
+            LikesEventStream likesEventStream;
+            /***** BUILD HashMaps for recommentdation ****/
+            for(Stream stream : iterable){
+                likesEventStream = (LikesEventStream) stream;
+                postId = likesEventStream.getPostId();
+                userId = likesEventStream.getPersonId();
+
+                if(postWithUserLikes.containsKey(postId)){
+                    postWithUserLikes.get(postId).add(userId);
+                } else{
+                    List<Integer> user_list = new ArrayList<>();
+                    user_list.add(userId);
+                    postWithUserLikes.put(postId, user_list);
+                }
+
+                if(userWithPostHeLikes.containsKey(userId)){
+                    userWithPostHeLikes.get(userId).add(postId);
+                } else{
+                    List<Integer> post_list = new ArrayList<>();
+                    post_list.add(postId);
+                    userWithPostHeLikes.put(userId, post_list);
+                }
+            }
+
+            /*** COUNT HOW MANY LIKES BOTH USERS HAVE FOR A COMMON POST ****/
+            int[] personIds = {47, 192, 265, 395, 406, 581, 650, 724, 838, 913};    //User we are making the recommendation for.
+            List<Integer> likedPosts;
+            List<Integer> userLikedPost;
+            for(Integer user : personIds){
+                likedPosts = userWithPostHeLikes.get(user);
+                if(likedPosts != null){
+                    for(Integer liked_post_id : likedPosts){
+                        userLikedPost = postWithUserLikes.get(liked_post_id);
+                        for(Integer maybe_similar_user : userLikedPost){
+                            if(userAndSimilarUserCount.containsKey(user)){
+                                if(userAndSimilarUserCount.get(user).containsKey(maybe_similar_user)){
+                                    userAndSimilarUserCount.get(user).put(maybe_similar_user,userAndSimilarUserCount.get(user).get(maybe_similar_user)+1);
+                                }else{
+                                    userAndSimilarUserCount.get(user).put(maybe_similar_user,1);
+                                }
+                            }else{
+                                userAndSimilarUserCount.put(user, new HashMap<>());
+                                userAndSimilarUserCount.get(user).put(maybe_similar_user,1);
+                            }
+                        }
+                    }
+
+                    /****  COLLECT RESULTS *****/
+                    collector.collect(new Tuple4(user, new Date(context.window().getEnd()), userAndSimilarUserCount.get(user), "Recommendation"));
+                }
+            }
+        }
+
+
+        //TODO
+        private boolean isFriend(Integer userId1, Integer userId2){
+            return false;
+        }
     }
 
 }
