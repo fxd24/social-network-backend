@@ -11,8 +11,10 @@ import com.dspa.project.common.deserialization.PostEventStreamDeserializationSch
 import com.dspa.project.model.*;
 import flink.StreamConsumer;
 import flink.StreamTimestampAssigner;
+import javafx.util.Pair;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.FlatMapFunction;
+import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.java.functions.KeySelector;
 import org.apache.flink.api.java.tuple.Tuple;
@@ -39,6 +41,10 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.PriorityBlockingQueue;
 
 
 @SpringBootApplication
@@ -80,8 +86,19 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
 
         /***********    COOL STUFF FOR ANALYSIS  ****************/
 
+        ConcurrentMap<Integer, Long> activePosts = new ConcurrentHashMap<>();
         /** Assign Timestamps and Watermarks on all the streams **/
-        DataStream<Stream> connectedStream = commentInputStream.union(likesInputStream,postInputStream).assignTimestampsAndWatermarks(streamTimestampAssigner);
+        DataStream<Stream> connectedStream = commentInputStream
+                .union(likesInputStream,postInputStream)
+                .assignTimestampsAndWatermarks(streamTimestampAssigner)
+                .map(new ActivePostMap(activePosts))
+                ;
+
+        /*** PRINT ACTIVE POST **/
+//        connectedStream
+//                .windowAll(TumblingEventTimeWindows.of(Time.minutes(30)))
+//                .map(new PrintAndCleanActivePost(activePosts))
+//                .print();
 
         /** Persist stream information **/
         DataStream<CommentEventStream> commentEventStream =
@@ -94,20 +111,20 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                 .map(persistForComment);
 
 
-        connectedStream
-                .filter(new LikeEventStreamFilter())
-                .map(x->{
-                    return (LikesEventStream) x;
-                })
-                .map(persistForLikes);
+//        connectedStream
+//                .filter(new LikeEventStreamFilter())
+//                .map(x->{
+//                    return (LikesEventStream) x;
+//                })
+//                .map(persistForLikes);
 
 
-        connectedStream
-                .filter(new PostEventStreamFilter())
-                .map(x->{
-                    return (PostEventStream) x;
-                })
-                .map(persistForPost);
+//        connectedStream
+//                .filter(new PostEventStreamFilter())
+//                .map(x->{
+//                    return (PostEventStream) x;
+//                })
+//                .map(persistForPost);
 
         /** Comment Stats **/
         commentEventStream
@@ -126,7 +143,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                         }
                 )
                 .window(TumblingEventTimeWindows.of(Time.minutes(30)))
-                .process(new NumberOfCommentsFunction())
+                .process(new NumberOfCommentsFunction(activePosts))
                 .print();
 
         /** Replies Stats **/
@@ -147,7 +164,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                         }
                 )
                 .window(TumblingEventTimeWindows.of(Time.minutes(30)))
-                .process(new NumberOfRepliesFunction())
+                .process(new NumberOfRepliesFunction(activePosts))
                 .print();
 
         /** Post Stream **/
@@ -155,7 +172,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                 .flatMap(new UserEngagedWithPost())
                 .keyBy(0)
                 .window(TumblingEventTimeWindows.of(Time.hours(1)))
-                .process(new UserEngagedWithPostFunction())
+                .process(new UserEngagedWithPostFunction(activePosts))
                 .print();
 
 
@@ -176,6 +193,11 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
             Tuple5<Integer, Date, Integer, Integer, String>,
             Integer,
             TimeWindow> {
+        private final ConcurrentMap<Integer, Long> activePosts;
+
+        public NumberOfCommentsFunction(ConcurrentMap<Integer, Long> activePosts) {
+            this.activePosts = activePosts;
+        }
 
         @Override
         public void process(Integer integer, Context context, Iterable<CommentEventStream> iterable, Collector<Tuple5<Integer, Date, Integer, Integer, String>> collector) throws Exception {
@@ -185,7 +207,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                 i++;
                 if(commentEventStream.getReply_to_postId()!=-1){
                     //System.out.println("Is the post active? "+IsPostActive.isPostActive(context, commentEventStream.getReply_to_postId()));
-                    if(IsPostActive.isPostActive(context, commentEventStream.getReply_to_postId())) {
+                    if(IsPostActive.isPostActive(context, commentEventStream.getReply_to_postId(),activePosts)) {
                         collector.collect(new Tuple5<>(commentEventStream.getReply_to_postId(), new Date(context.window().getEnd()), commentEventStream.getId(), i, "COMMENTS"));
                     }
                 }
@@ -194,11 +216,11 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
     }
 
     public class EarlyReplies extends RichFlatMapFunction<CommentEventStream, CommentEventStream>{
-        private ArrayList<CommentEventStream> repliesWithNoPostId;
+        private CopyOnWriteArrayList<CommentEventStream> repliesWithNoPostId;
         @Override
         public void open(Configuration parameters) throws Exception {
             //super.open(parameters);
-            repliesWithNoPostId = new ArrayList<>();
+            repliesWithNoPostId = new CopyOnWriteArrayList<>();
         }
 
         @Override
@@ -225,7 +247,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
             for(CommentEventStream commentEventStream : repliesWithNoPostId){
                 Optional<PostAndComment> postAndComment = postAndCommentRepository.findById(commentEventStream.getReply_to_commentId());
                 if(postAndComment.isPresent()){
-                    System.out.println("YESSSSSS   Reply now has a mapping");
+                    //System.out.println("YESSSSSS   Reply now has a mapping");
                     collector.collect(commentEventStream);
                     repliesWithNoPostId.remove(commentEventStream);
                 }
@@ -239,6 +261,11 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                 Integer,
                 TimeWindow> {
         private transient PostAndCommentRepository postAndCommentRepository;
+        private final ConcurrentMap<Integer, Long> activePosts;
+
+        public NumberOfRepliesFunction(ConcurrentMap<Integer, Long> activePosts) {
+            this.activePosts = activePosts;
+        }
 
         @Override
         public void process(Integer integer, Context context, Iterable<CommentEventStream> iterable, Collector<Tuple5<Integer, Date, Integer, Integer, String>> collector) throws Exception {
@@ -255,7 +282,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
 
                 if(postAndComment.isPresent()){
                     //System.out.println("Is the post active? "+IsPostActive.isPostActive(context, postAndComment.get().getPostId()));
-                    if(IsPostActive.isPostActive(context, postAndComment.get().getPostId())){
+                    if(IsPostActive.isPostActive(context, postAndComment.get().getPostId(), activePosts)){
                         collector.collect(new Tuple5<>(postAndComment.get().getPostId(),new Date(context.window().getEnd()),commentEventStream.getId(),i, "REPLIES"));
                     }
                 }
@@ -265,21 +292,28 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
     }
 
     public static class IsPostActive{
-        public static boolean isPostActive(ProcessWindowFunction.Context context, Integer postId){
+        public static boolean isPostActive(ProcessWindowFunction.Context context, Integer postId, ConcurrentMap<Integer, Long> activePost){
 
             PostAndDateRepository postAndDateRepository = SpringBeansUtil.getBean(PostAndDateRepository.class);
 
             long currentTime = context.window().maxTimestamp();
             //System.out.println("The current time is: "+currentTime);
-            long postTime = postAndDateRepository.findById(postId).get().getLastUpdate().getTime();
-            //System.out.println("The post time is: "+postTime);
-            long hours12 = Time.hours(12).toMilliseconds();
+            //long postTime = postAndDateRepository.findById(postId).get().getLastUpdate().getTime(); //TODO: if optional is not found
+            if(activePost.containsKey(postId)){
+                long postTime = activePost.get(postId);
+                //System.out.println("The post time is: "+postTime);
+                long hours12 = Time.hours(12).toMilliseconds();
 
-            if((postTime+hours12)>currentTime){
+                if((postTime+hours12)>currentTime){
+                    return true;
+                }else {
+                    return false;
+                }
+            }else{
                 return true;
-            }else {
-                return false;
             }
+
+
 
         }
     }
@@ -322,6 +356,11 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
             Tuple,
             TimeWindow> {
 
+        private final ConcurrentMap<Integer, Long> activePosts;
+
+        public UserEngagedWithPostFunction(ConcurrentMap<Integer, Long> activePosts) {
+            this.activePosts = activePosts;
+        }
 
         @Override
         public void process(Tuple integer, Context context, Iterable<Tuple3<Integer, Integer, Integer>> iterable, Collector<Tuple4<Integer, Date, Integer, String>> collector) throws Exception {
@@ -337,7 +376,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
 //                System.out.println(iterable.iterator().next().f0);
 //
 //            }
-            if(IsPostActive.isPostActive(context, iterable.iterator().next().f0)) {
+            if(IsPostActive.isPostActive(context, iterable.iterator().next().f0, activePosts)) {
                 collector.collect(new Tuple4<>(iterable.iterator().next().f0, new Date(context.window().getEnd()), userIds.size(), "USER ENGAGED WITH POST"));
             }
         }
@@ -372,6 +411,52 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
         @Override
         public boolean filter(CommentEventStream stream) throws Exception {
             return stream.getReply_to_commentId()!=-1;
+        }
+    }
+
+    public class ActivePostMap implements MapFunction<Stream,Stream> {
+        private final ConcurrentMap<Integer, Long> activePosts;
+        public transient PostAndCommentRepository postAndCommentRepository;
+
+        public ActivePostMap(ConcurrentMap<Integer, Long> activePosts) {
+            this.activePosts = activePosts;
+        }
+        @Override
+        public Stream map(Stream stream) throws Exception {
+            if(this.postAndCommentRepository==null){
+                postAndCommentRepository = SpringBeansUtil.getBean(PostAndCommentRepository.class);
+            }
+            if(stream instanceof CommentEventStream){
+                CommentEventStream commentEventStream = (CommentEventStream) stream;
+                if(commentEventStream.getReply_to_postId()!=-1) {
+                    activePosts.put(commentEventStream.getReply_to_postId(),commentEventStream.getSentAt().getTime());
+                } else if(commentEventStream.getReply_to_commentId()!=-1){
+                    Optional<PostAndComment> postAndCommentOptional = postAndCommentRepository.findById(commentEventStream.getReply_to_commentId());
+                    if(postAndCommentOptional.isPresent()){
+                        activePosts.put(postAndCommentOptional.get().getPostId(), commentEventStream.getSentAt().getTime());
+                    }
+                }
+            }else if(stream instanceof LikesEventStream){
+                LikesEventStream likesEventStream = (LikesEventStream) stream;
+                activePosts.put(likesEventStream.getPostId(), likesEventStream.getSentAt().getTime());
+            }else{
+                PostEventStream postEventStream = (PostEventStream) stream;
+                activePosts.put(postEventStream.getId(),postEventStream.getSentAt().getTime());
+            }
+            return stream;
+        }
+    }
+
+    public class PrintAndCleanActivePost implements MapFunction<Stream,Stream> {
+        private final ConcurrentMap<Integer, Long> activePosts;
+
+        public PrintAndCleanActivePost(ConcurrentMap<Integer, Long> activePosts) {
+            this.activePosts = activePosts;
+        }
+
+        @Override
+        public Stream map(Stream stream) throws Exception {
+            return null;
         }
     }
 

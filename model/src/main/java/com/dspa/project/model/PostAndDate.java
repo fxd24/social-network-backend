@@ -7,6 +7,7 @@ import java.util.Date;
 @Table(name = "PostAndDate")
 public class PostAndDate {
     @Id
+    @Column(name = "id")
     private Integer id;
 
     @Column(name = "lastUpdate")

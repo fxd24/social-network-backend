@@ -9,6 +9,7 @@ import com.dspa.project.model.Stream;
 import com.dspa.project.recommendation.repository.ForumRepository;
 import flink.StreamConsumer;
 import flink.StreamTimestampAssigner;
+import javafx.util.Pair;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.api.java.tuple.Tuple5;
@@ -32,7 +33,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.ConfigurableApplicationContext;
+import scala.Int;
 
+import javax.persistence.criteria.CriteriaBuilder;
 import java.util.*;
 
 
@@ -160,11 +163,50 @@ public class RecommendationApplication implements CommandLineRunner {
                     }
 
                     /****  COLLECT RESULTS *****/
-                    collector.collect(new Tuple4(user, new Date(context.window().getEnd()), userAndSimilarUserCount.get(user), "Recommendation"));
+                    collector.collect(new Tuple4(user, new Date(context.window().getEnd()), get5MostSimilarUser(userAndSimilarUserCount.get(user), user), "Recommendation"));
                 }
             }
         }
 
+        private Map<Integer,Integer> get5MostSimilarUser(Map<Integer,Integer> userAndSimilarUserCount, Integer user){
+            Map<Integer,Integer> copy = new HashMap<>(userAndSimilarUserCount);
+            Map<Integer,Integer> result = new HashMap<>();
+
+            //System.out.println(result.toString());
+            Comparator<Pair<Integer,Integer>> comparator = (Pair<Integer,Integer> p1, Pair<Integer,Integer> p2)-> {
+                int val = p1.getValue().compareTo(p2.getValue());
+                if (val==0){
+                    return 0;
+                }else if(val==-1){
+                    return 1;
+                } else {
+                    return -1;
+                }
+
+            };
+
+            PriorityQueue<Pair<Integer,Integer>> orderedResult = new PriorityQueue<>(8, comparator);
+            for(Map.Entry<Integer, Integer> entry : copy.entrySet()){
+                Integer key = entry.getKey();
+                //remove if already friends
+                if(isFriend(user,key)){
+                    result.remove(key);
+                }else{
+                    orderedResult.add(new Pair<>(key, entry.getValue()));
+                }
+            }
+            //add most similar users
+            int size = orderedResult.size();
+            for(int i=0; i<size; i++){
+                Pair<Integer,Integer> tmp = orderedResult.poll();
+                result.put(tmp.getKey(), tmp.getValue());
+            }
+            if(size<5){//if not enough data to determine 5 similar user, choose randomly the rest
+                for(int i=0; i<5-size; i++)
+                result.put(i, 0);
+            }
+            return result;
+        }
 
         //TODO
         private boolean isFriend(Integer userId1, Integer userId2){

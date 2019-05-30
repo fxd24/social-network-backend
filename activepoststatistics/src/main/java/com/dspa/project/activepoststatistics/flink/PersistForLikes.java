@@ -17,41 +17,30 @@ public class PersistForLikes implements MapFunction<LikesEventStream,LikesEventS
 
     @Autowired
     public transient PostAndDateRepository postAndDateRepository;
-    @Autowired
-    public transient PostAndCommentRepository postAndCommentRepository;
-    @Autowired
-    public transient CommentAndReplyRepository commentAndReplyRepository;
-
 
     @Override
     public LikesEventStream map(LikesEventStream likesEventStream) throws Exception {
-        PostAndDate postAndDate = new PostAndDate();
-
-        if(this.postAndDateRepository==null){
-            postAndDateRepository = SpringBeansUtil.getBean(PostAndDateRepository.class);
-        }
-        if(this.postAndCommentRepository==null){
-            postAndCommentRepository = SpringBeansUtil.getBean(PostAndCommentRepository.class);
-        }
-        if(this.commentAndReplyRepository==null){
-            commentAndReplyRepository = SpringBeansUtil.getBean(CommentAndReplyRepository.class);
-        }
-
-        if(postAndDateRepository!=null){
-            Optional<PostAndDate> postAndDateOptional = postAndDateRepository.findById(likesEventStream.getPostId());
-            if(postAndDateOptional.isPresent()){
-                //System.out.println("PRINT updating the value PersistForLikes");
-                //postAndDateRepository.setLastUpdate(likesEventStream.getPostId(),likesEventStream.getSentAt());
-                postAndDate.setId(likesEventStream.getPostId());
-                postAndDate.setLastUpdate(likesEventStream.getSentAt());
-                postAndDateRepository.save(postAndDate);
-            }else{
-                //System.out.println("PRINT SAVING the value PersistForLikes");
-                postAndDate.setId(likesEventStream.getPostId());
-                postAndDate.setLastUpdate(likesEventStream.getSentAt());
-                postAndDateRepository.save(postAndDate);
-            }
-        }
+//        PostAndDate postAndDate = new PostAndDate();
+//
+//        if(this.postAndDateRepository==null){
+//            postAndDateRepository = SpringBeansUtil.getBean(PostAndDateRepository.class);
+//        }
+//
+//        if(postAndDateRepository!=null){
+//            Optional<PostAndDate> postAndDateOptional = postAndDateRepository.findById(likesEventStream.getPostId());
+//            if(postAndDateOptional.isPresent()){
+//                //System.out.println("PRINT updating the value PersistForLikes");
+//                //postAndDateRepository.setLastUpdate(likesEventStream.getPostId(),likesEventStream.getSentAt());
+//                postAndDate.setId(likesEventStream.getPostId());
+//                postAndDate.setLastUpdate(likesEventStream.getSentAt());
+//                postAndDateRepository.save(postAndDate);
+//            }else{
+//                //System.out.println("PRINT SAVING the value PersistForLikes");
+//                postAndDate.setId(likesEventStream.getPostId());
+//                postAndDate.setLastUpdate(likesEventStream.getSentAt());
+//                postAndDateRepository.save(postAndDate);
+//            }
+//        }
         return likesEventStream;
     }
 }

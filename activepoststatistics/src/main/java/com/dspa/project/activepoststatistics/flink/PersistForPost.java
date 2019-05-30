@@ -4,25 +4,28 @@ import com.dspa.project.activepoststatistics.SpringBeansUtil;
 import com.dspa.project.activepoststatistics.repo.CommentAndReplyRepository;
 import com.dspa.project.activepoststatistics.repo.PostAndCommentRepository;
 import com.dspa.project.activepoststatistics.repo.PostAndDateRepository;
-import com.dspa.project.model.PostAndDate;
-import com.dspa.project.model.PostEventStream;
+import com.dspa.project.model.*;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.provider.HibernateUtils;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.transaction.annotation.Transactional;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import java.util.Optional;
 
 @Component
-public class PersistForPost implements MapFunction<PostEventStream,PostEventStream> {
+public class PersistForPost implements MapFunction<Stream,Stream> {
     @Autowired
     public transient PostAndDateRepository postAndDateRepository;
     @Autowired
     public transient PostAndCommentRepository postAndCommentRepository;
-    @Autowired
-    public transient CommentAndReplyRepository commentAndReplyRepository;
+
 
     @Override
-    public PostEventStream map(PostEventStream postEventStream) throws Exception {
+    public Stream map(Stream stream) throws Exception {
         PostAndDate postAndDate = new PostAndDate();
 
         if(this.postAndDateRepository==null){
@@ -31,27 +34,84 @@ public class PersistForPost implements MapFunction<PostEventStream,PostEventStre
         if(this.postAndCommentRepository==null){
             postAndCommentRepository = SpringBeansUtil.getBean(PostAndCommentRepository.class);
         }
-        if(this.commentAndReplyRepository==null){
-            commentAndReplyRepository = SpringBeansUtil.getBean(CommentAndReplyRepository.class);
-        }
+        postAndDateRepository.flush();
+        if(stream instanceof CommentEventStream){
+            CommentEventStream commentEventStream = (CommentEventStream) stream;
 
-        Optional<PostAndDate> postAndDateOptional = postAndDateRepository.findById(postEventStream.getId());
-        if(postAndDateOptional.isPresent()){
-            //System.out.println("PRINT updating the value PersistForPost");
-            //postAndDateRepository.setLastUpdate(postEventStream.getId(),postEventStream.getSentAt());
-            postAndDate.setId(postEventStream.getId());
-            postAndDate.setLastUpdate(postEventStream.getSentAt());
-            postAndDateRepository.save(postAndDate);
+                if(commentEventStream.getReply_to_postId()!=-1) {
+                    Optional<PostAndDate> postAndDateOptional = postAndDateRepository.findById(commentEventStream.getReply_to_postId());
+                    if(postAndDateOptional.isPresent()) {
+                        if (postAndDateOptional.get().getLastUpdate().getTime() < commentEventStream.getSentAt().getTime()) {
+                            postAndDate.setId(commentEventStream.getReply_to_postId());
+                            postAndDate.setLastUpdate(commentEventStream.getSentAt());
+                            postAndDateRepository.saveAndFlush(postAndDate);
+                        }
+                    }else{
+                        postAndDate.setId(commentEventStream.getReply_to_postId());
+                        postAndDate.setLastUpdate(commentEventStream.getSentAt());
+                        postAndDateRepository.saveAndFlush(postAndDate);
+                    }
+                } else if(commentEventStream.getReply_to_commentId()!=-1){
+                    Optional<PostAndComment> postAndCommentOptional = postAndCommentRepository.findById(commentEventStream.getReply_to_commentId());
+                    //if(!postAndCommentOptional.isPresent()) System.out.println("The value of the post_id of the reply is not yet stored");
+                    if(postAndCommentOptional.isPresent()){
+                        Optional<PostAndDate> postAndDateOptional = postAndDateRepository.findById(postAndCommentOptional.get().getPostId());
+                        if(postAndDateOptional.isPresent()) {
+                            if (postAndDateOptional.get().getLastUpdate().getTime() < commentEventStream.getSentAt().getTime()) {
+                                postAndDate.setId(postAndCommentOptional.get().getPostId());
+                                postAndDate.setLastUpdate(commentEventStream.getSentAt());
+                                postAndDateRepository.saveAndFlush(postAndDate);
+                            }
+                        }else{
+                            postAndDate.setId(postAndCommentOptional.get().getPostId());
+                            postAndDate.setLastUpdate(commentEventStream.getSentAt());
+                            postAndDateRepository.saveAndFlush(postAndDate);
+                        }
+                    }
+                }
+
+
+        }else if(stream instanceof LikesEventStream){
+            LikesEventStream likesEventStream = (LikesEventStream) stream;
+
+            Optional<PostAndDate> postAndDateOptional = postAndDateRepository.findById(likesEventStream.getPostId());
+            if(postAndDateOptional.isPresent()){
+                //System.out.println("PRINT updating the value PersistForPost");
+                //if the timestamp is newer
+                if(postAndDateOptional.get().getLastUpdate().getTime()<likesEventStream.getSentAt().getTime()){
+                    postAndDate.setId(likesEventStream.getPostId());
+                    postAndDate.setLastUpdate(likesEventStream.getSentAt());
+                    postAndDateRepository.saveAndFlush(postAndDate);
+                }
+            }else {
+                //System.out.println("PRINT SAVING the value PersistForPost");
+                postAndDate.setId(likesEventStream.getPostId());
+                postAndDate.setLastUpdate(likesEventStream.getSentAt());
+                postAndDateRepository.saveAndFlush(postAndDate);
+            }
         }else{
-            //System.out.println("PRINT SAVING the value PersistForPost");
-            postAndDate.setId(postEventStream.getId());
-            postAndDate.setLastUpdate(postEventStream.getSentAt());
-            postAndDateRepository.save(postAndDate);
-        }
-        if(postAndDateRepository!=null){
+            PostEventStream postEventStream = (PostEventStream) stream;
+
+            Optional<PostAndDate> postAndDateOptional = postAndDateRepository.findById(postEventStream.getId());
+            if(postAndDateOptional.isPresent()){
+                //System.out.println("PRINT updating the value PersistForPost");
+                //if the timestamp is newer
+                if(postAndDateOptional.get().getLastUpdate().getTime()<postEventStream.getSentAt().getTime()){
+                    postAndDate.setId(postEventStream.getId());
+                    postAndDate.setLastUpdate(postEventStream.getSentAt());
+                    postAndDateRepository.saveAndFlush(postAndDate);
+                }
+            }else{
+                //System.out.println("PRINT SAVING the value PersistForPost");
+                postAndDate.setId(postEventStream.getId());
+                postAndDate.setLastUpdate(postEventStream.getSentAt());
+                postAndDateRepository.saveAndFlush(postAndDate);
+            }
 
         }
+        postAndDate=null;
 
-        return postEventStream;
+
+        return stream;
     }
 }
