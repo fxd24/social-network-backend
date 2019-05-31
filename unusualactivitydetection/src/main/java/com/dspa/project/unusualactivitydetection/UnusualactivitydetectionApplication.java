@@ -195,7 +195,7 @@ public class UnusualactivitydetectionApplication implements CommandLineRunner {
 //            }else {
 //                return false;
 //            }
-            double cut_off = 1*stddev(); //TODO: here you can specify how many stddevs you want to use as threshold.
+            double cut_off = 0.5*stddev(); //TODO: here you can specify how many stddevs you want to use as threshold.
             double lower = this.mean-cut_off;
             double upper = this.mean+cut_off;
             if((value < lower || value > upper) && count > 4){ //count>4 in order to have enough samples to say something

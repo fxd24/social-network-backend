@@ -17,10 +17,7 @@ import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.functions.RichFlatMapFunction;
 import org.apache.flink.api.java.functions.KeySelector;
-import org.apache.flink.api.java.tuple.Tuple;
-import org.apache.flink.api.java.tuple.Tuple3;
-import org.apache.flink.api.java.tuple.Tuple4;
-import org.apache.flink.api.java.tuple.Tuple5;
+import org.apache.flink.api.java.tuple.*;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -71,7 +68,14 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
         /*******************  CommentEventStream Config *********************/
         FlinkKafkaConsumer011<Stream> consumeComment = StreamConsumer.createStreamConsumer("comment","localhost:9092", "activestats", new CommentStreamDeserializationSchema()); //TODO: change to correct topic
         consumeComment.setStartFromEarliest(); //TODO: change this based on what is required
-        DataStream<Stream> commentInputStream = environment.addSource(consumeComment);
+        DataStream<Stream> commentInputStream = environment.addSource(consumeComment)
+                .map(x->{
+                    return (CommentEventStream) x;
+                })
+                .flatMap(new EarlyReplies())
+                .map(x->{
+                    return (Stream) x;
+                });
         PersistForComment persistForComment = new PersistForComment();
         /*******************  LikesEventStream Config *********************/
         FlinkKafkaConsumer011<Stream> consumeLikes = StreamConsumer.createStreamConsumer("likes", "localhost:9092", "activestats", new LikesEventStreamDeserializationSchema());
@@ -96,8 +100,10 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
 
         /*** PRINT ACTIVE POST **/
 //        connectedStream
-//                .windowAll(TumblingEventTimeWindows.of(Time.minutes(30)))
-//                .map(new PrintAndCleanActivePost(activePosts))
+//                .map(new DummyMap())
+//                .keyBy(0)
+//                .window(TumblingEventTimeWindows.of(Time.minutes(30)))
+//                .process(new PrintAndCleanActivePost(activePosts))
 //                .print();
 
         /** Persist stream information **/
@@ -107,7 +113,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                 .map(x->{
                     return (CommentEventStream) x;
                 })
-                .flatMap(new EarlyReplies())
+                //.flatMap(new EarlyReplies())
                 .map(persistForComment);
 
 
@@ -159,7 +165,20 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                             @Override
                             public Integer getKey(CommentEventStream commentEventStream) throws Exception {
                                 //System.out.println("Selecting key");
-                                return commentEventStream.getReply_to_postId();
+                                PostAndCommentRepository postAndCommentRepository=null;
+                                if(postAndCommentRepository==null){
+                                    postAndCommentRepository = SpringBeansUtil.getBean(PostAndCommentRepository.class);
+                                }
+                                Optional<PostAndComment> postAndComment = postAndCommentRepository.findById(commentEventStream.getReply_to_commentId());
+                                //System.out.println("Maybe collecting. The value of Optional is: "+postAndComment.isPresent());
+                                if(postAndComment.isPresent()){
+                                    //System.out.println("Is the post active? "+IsPostActive.isPostActive(context, postAndComment.get().getPostId()));
+                                    System.out.println("post_id: "+postAndComment.get().getPostId()+"; "+commentEventStream);
+                                    return postAndComment.get().getPostId();
+                                } else {
+                                    System.out.println("ERRORSSSSSSSS");
+                                }
+                                return null;
                             }
                         }
                 )
@@ -207,6 +226,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                 i++;
                 if(commentEventStream.getReply_to_postId()!=-1){
                     //System.out.println("Is the post active? "+IsPostActive.isPostActive(context, commentEventStream.getReply_to_postId()));
+                    System.out.println(commentEventStream.toString());
                     if(IsPostActive.isPostActive(context, commentEventStream.getReply_to_postId(),activePosts)) {
                         collector.collect(new Tuple5<>(commentEventStream.getReply_to_postId(), new Date(context.window().getEnd()), commentEventStream.getId(), i, "COMMENTS"));
                     }
@@ -274,19 +294,21 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                 postAndCommentRepository = SpringBeansUtil.getBean(PostAndCommentRepository.class);
             }
             Optional<PostAndComment> postAndComment;
+            Integer post_id=null;
             for(CommentEventStream commentEventStream : iterable){
                 i++;
                 postAndComment = postAndCommentRepository.findById(commentEventStream.getReply_to_commentId());
                 //System.out.println("Maybe collecting. The value of Optional is: "+postAndComment.isPresent());
-                //TODO: ABSOLUTELY CHANGE
-
                 if(postAndComment.isPresent()){
                     //System.out.println("Is the post active? "+IsPostActive.isPostActive(context, postAndComment.get().getPostId()));
-                    if(IsPostActive.isPostActive(context, postAndComment.get().getPostId(), activePosts)){
-                        collector.collect(new Tuple5<>(postAndComment.get().getPostId(),new Date(context.window().getEnd()),commentEventStream.getId(),i, "REPLIES"));
-                    }
+                    //System.out.println("post_id: "+postAndComment.get().getPostId()+"; "+commentEventStream);
+                    post_id=postAndComment.get().getPostId();
                 }
-
+            }
+            if(post_id!=null) {
+                if (IsPostActive.isPostActive(context, post_id, activePosts)) {
+                    collector.collect(new Tuple5<>(post_id, new Date(context.window().getEnd()), 0, i, "REPLIES"));
+                }
             }
         }
     }
@@ -447,16 +469,36 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
         }
     }
 
-    public class PrintAndCleanActivePost implements MapFunction<Stream,Stream> {
-        private final ConcurrentMap<Integer, Long> activePosts;
+    public class PrintAndCleanActivePost extends ProcessWindowFunction<
+            Tuple2<Integer, Stream>,
+            Tuple3<List<Integer>, Date, String>, Tuple, TimeWindow> {
+
+        private ConcurrentMap<Integer, Long> activePosts;
 
         public PrintAndCleanActivePost(ConcurrentMap<Integer, Long> activePosts) {
             this.activePosts = activePosts;
         }
 
         @Override
-        public Stream map(Stream stream) throws Exception {
-            return null;
+        public void process(Tuple tuple, Context context, Iterable<Tuple2<Integer, Stream>> iterable, Collector<Tuple3<List<Integer>, Date, String>> collector) throws Exception {
+            long window_end = context.window().getEnd();
+            long hours12 = Time.hours(12).toMilliseconds();
+            List<Integer> currently_active = new ArrayList<>();
+            for(ConcurrentMap.Entry<Integer,Long> entry : activePosts.entrySet()){
+                if((entry.getValue()+hours12)>window_end){//active
+                    currently_active.add(entry.getKey());
+                }else{//not active
+                    activePosts.remove(entry.getKey());
+                }
+            }
+            collector.collect(new Tuple3<>(currently_active, new Date(context.window().getEnd()), "Currently active"));
+        }
+    }
+
+    public class DummyMap implements MapFunction<Stream, Tuple2<Integer, Stream>> {
+        @Override
+        public Tuple2<Integer, Stream> map(Stream stream) throws Exception {
+            return new Tuple2<>(0,stream);
         }
     }
 

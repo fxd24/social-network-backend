@@ -102,17 +102,17 @@ public class RecommendationApplication implements CommandLineRunner {
             Tuple4<Integer, Date, Map<Integer, Integer>, String>,
             Integer,
             TimeWindow> {
-        private final Map<Integer, Map<Integer,Integer>> userAndSimilarUserCount;
+//        private final Map<Integer, Map<Integer,Integer>> userAndSimilarUserCount;
 
-        public RecommendationFunction(Map<Integer, Map<Integer, Integer>> userAndSimilarUserCount) {
-            this.userAndSimilarUserCount = userAndSimilarUserCount;
-        }
+//        public RecommendationFunction(Map<Integer, Map<Integer, Integer>> userAndSimilarUserCount) {
+//            this.userAndSimilarUserCount = userAndSimilarUserCount;
+//        }
 
         @Override
         public void process(Integer integer, Context context, Iterable<Stream> iterable, Collector<Tuple4<Integer, Date, Map<Integer, Integer>, String>> collector) throws Exception {
             Map<Integer, List<Integer>> postWithUserLikes = new HashMap<>();
             Map<Integer, List<Integer>> userWithPostHeLikes = new HashMap<>();
-            //Map<Integer, Map<Integer,Integer>> userAndSimilarUserCount = this.userAndSimilarUserCount;//new HashMap<>(); //<User for recommendation, Tuple2<Possible similar user, count of how many equal likes they have>>
+            Map<Integer, Map<Integer,Integer>> userAndSimilarUserCount = /*this.userAndSimilarUserCount;//*/new HashMap<>(); //<User for recommendation, Tuple2<Possible similar user, count of how many equal likes they have>>
 
             Integer postId, userId;
             LikesEventStream likesEventStream;
