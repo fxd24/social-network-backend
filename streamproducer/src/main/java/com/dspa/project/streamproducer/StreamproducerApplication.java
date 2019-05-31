@@ -31,7 +31,6 @@ public class StreamproducerApplication {
 
         PriorityBlockingQueue<Pair<Long,Stream>> queue = new PriorityBlockingQueue<>(50, new PairComparator());
 
-
         Runnable runComment = new ProduceCommentStream(queue);
         Runnable runLikes = new ProduceLikesStream(queue);
         Runnable runPost = new ProducePostStream(queue);
@@ -50,17 +49,6 @@ public class StreamproducerApplication {
 
         consThread.start();
 
-        //comment first: 2012-02-02T02:45:14Z
-        //likes first: 2012-02-02T01:09:00.000Z
-        //post first: 2012-02-02T02:46:56Z
-
-
-//        CSVReader csvReader = new CSVReader("[|]");
-//        try {
-//            HashMap<Long, CommentEventStream> test = csvReader.readCommentEventStreamCSVtoMap(producer);
-//        }catch (IOException e){
-//            e.printStackTrace();
-//        }
     }
 
 
@@ -82,7 +70,7 @@ public class StreamproducerApplication {
             future.addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
                 @Override
                 public void onSuccess(SendResult<String, String> result) {
-                    System.out.println("Sent message to "+ topicName +"=[" + message + "] with offset=[" + result.getRecordMetadata().offset() + "]");
+                    //System.out.println("Sent message to "+ topicName +"=[" + message + "] with offset=[" + result.getRecordMetadata().offset() + "]");
                 }
 
                 @Override

@@ -5,7 +5,6 @@ import com.dspa.project.model.LikesEventStream;
 import com.dspa.project.model.PostEventStream;
 import com.dspa.project.model.Stream;
 
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Comparator;
 
@@ -28,14 +27,6 @@ public class StreamComparator implements Comparator<Stream> {
              sdf2 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
         }
 
-        //TODO: correct or remove
-//        try {
-//            Long l1 = sdf1.parse(o1.getCreationDate()).getTime();
-//            Long l2 = sdf2.parse(o2.getCreationDate()).getTime();
-//            return l1.compareTo(l2);
-//        } catch (ParseException e) {
-//            e.printStackTrace();
-//        }
         return 0;
     }
 }

@@ -24,7 +24,7 @@ public class QueueConsumer implements Runnable{
 
     }
     @Override
-    //TODO: cleanup
+
     public void run() {
         Long last_timestamp = 1328141589837L;
         // System.out.println("CONSUMING: "+queue.poll().getValue().toString());
@@ -38,12 +38,12 @@ public class QueueConsumer implements Runnable{
 
             Long diff = new_timestamp - last_timestamp;
             Long waiting_time = diff / speedup_factor;
-            //TODO: beautify
+
             if(waiting_time>300000L){
                 waiting_time = 300000L/speedup_factor;
             }
             try {
-                //System.out.println("Waiting for " + waiting_time + " milliseconds"); //TODO: remove when tested
+                //System.out.println("Waiting for " + waiting_time + " milliseconds");
                 TimeUnit.MILLISECONDS.sleep(waiting_time);
             } catch (InterruptedException e) {
                 e.printStackTrace();

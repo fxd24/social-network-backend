@@ -1,19 +1,13 @@
 package com.dspa.project.activepoststatistics.flink;
 
 import com.dspa.project.activepoststatistics.SpringBeansUtil;
-import com.dspa.project.activepoststatistics.repo.CommentAndReplyRepository;
 import com.dspa.project.activepoststatistics.repo.PostAndCommentRepository;
 import com.dspa.project.activepoststatistics.repo.PostAndDateRepository;
 import com.dspa.project.model.*;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.jpa.provider.HibernateUtils;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.EnableTransactionManagement;
-import org.springframework.transaction.annotation.Transactional;
 
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
 import java.util.Optional;
 
 @Component

@@ -8,9 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 public class StreamWaitSimulation {
 
-
-    //@Value(value = "${speedup.factor}") //TODO: doesn't take the value
-    private long speedup_factor = 10000L; //TODO: automate the speedup factor
+    private long speedup_factor = 10000L;
 
 
     public void wait(String last_timestamp, String new_timestamp) {
@@ -19,7 +17,7 @@ public class StreamWaitSimulation {
         Date t_last = null;
         Date t_new = null;
         try {
-            //System.out.println("Class:StreamWaitSimulation. Function:wait {last_timestamp:" + last_timestamp + "},{new_timestamp:" + new_timestamp + "}"); //TODO: remove when tested
+            //System.out.println("Class:StreamWaitSimulation. Function:wait {last_timestamp:" + last_timestamp + "},{new_timestamp:" + new_timestamp + "}");
             t_last = sdf.parse(last_timestamp);
             t_new = sdf.parse(new_timestamp);
         } catch (ParseException e) {
@@ -31,7 +29,7 @@ public class StreamWaitSimulation {
         long diff = t_new.getTime() - t_last.getTime();
         waiting_time = diff / speedup_factor;
         try {
-            //System.out.println("Waiting for " + waiting_time + " milliseconds"); //TODO: remove when tested
+            //System.out.println("Waiting for " + waiting_time + " milliseconds");
             TimeUnit.MILLISECONDS.sleep(waiting_time);
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -46,7 +44,7 @@ public class StreamWaitSimulation {
         Long diff = last_timestamp - new_timestamp;
         waiting_time = diff / speedup_factor;
         try {
-            System.out.println("Waiting for " + waiting_time + " milliseconds"); //TODO: remove when tested
+            //System.out.println("Waiting for " + waiting_time + " milliseconds");
             TimeUnit.MILLISECONDS.sleep(waiting_time);
         } catch (InterruptedException e) {
             e.printStackTrace();
@@ -55,7 +53,7 @@ public class StreamWaitSimulation {
 
     }
 
-    public Long randomDelayNumber() { //TODO: add more properties in the randomness range
+    public Long randomDelayNumber() {
         Random random = new Random();
         return (long) random.nextInt(300000); //this are 5 minutes max delay
 

@@ -1,16 +1,10 @@
 package com.dspa.project.activepoststatistics.flink;
 
-import com.dspa.project.activepoststatistics.SpringBeansUtil;
-import com.dspa.project.activepoststatistics.repo.CommentAndReplyRepository;
-import com.dspa.project.activepoststatistics.repo.PostAndCommentRepository;
 import com.dspa.project.activepoststatistics.repo.PostAndDateRepository;
 import com.dspa.project.model.LikesEventStream;
-import com.dspa.project.model.PostAndDate;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.util.Optional;
 
 @Component
 public class PersistForLikes implements MapFunction<LikesEventStream,LikesEventStream> {

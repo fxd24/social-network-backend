@@ -11,7 +11,6 @@ import com.dspa.project.common.deserialization.PostEventStreamDeserializationSch
 import com.dspa.project.model.*;
 import flink.StreamConsumer;
 import flink.StreamTimestampAssigner;
-import javafx.util.Pair;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.common.functions.MapFunction;
@@ -23,7 +22,6 @@ import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
-import org.apache.flink.streaming.api.functions.windowing.RichProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
@@ -41,7 +39,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.PriorityBlockingQueue;
 
 
 @SpringBootApplication
@@ -66,8 +63,8 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
         environment.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
         StreamTimestampAssigner streamTimestampAssigner = new StreamTimestampAssigner(Time.milliseconds(300000));
         /*******************  CommentEventStream Config *********************/
-        FlinkKafkaConsumer011<Stream> consumeComment = StreamConsumer.createStreamConsumer("comment","localhost:9092", "activestats", new CommentStreamDeserializationSchema()); //TODO: change to correct topic
-        consumeComment.setStartFromEarliest(); //TODO: change this based on what is required
+        FlinkKafkaConsumer011<Stream> consumeComment = StreamConsumer.createStreamConsumer("comment","localhost:9092", "activestats", new CommentStreamDeserializationSchema());
+        consumeComment.setStartFromEarliest(); //change this based on what is required
         DataStream<Stream> commentInputStream = environment.addSource(consumeComment)
                 .map(x->{
                     return (CommentEventStream) x;
@@ -173,7 +170,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                                 //System.out.println("Maybe collecting. The value of Optional is: "+postAndComment.isPresent());
                                 if(postAndComment.isPresent()){
                                     //System.out.println("Is the post active? "+IsPostActive.isPostActive(context, postAndComment.get().getPostId()));
-                                    System.out.println("post_id: "+postAndComment.get().getPostId()+"; "+commentEventStream);
+                                    /****///System.out.println("post_id: "+postAndComment.get().getPostId()+"; "+commentEventStream);
                                     return postAndComment.get().getPostId();
                                 } else {
                                     System.out.println("ERRORSSSSSSSS");
@@ -226,7 +223,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                 i++;
                 if(commentEventStream.getReply_to_postId()!=-1){
                     //System.out.println("Is the post active? "+IsPostActive.isPostActive(context, commentEventStream.getReply_to_postId()));
-                    System.out.println(commentEventStream.toString());
+                    //System.out.println(commentEventStream.toString());
                     if(IsPostActive.isPostActive(context, commentEventStream.getReply_to_postId(),activePosts)) {
                         collector.collect(new Tuple5<>(commentEventStream.getReply_to_postId(), new Date(context.window().getEnd()), commentEventStream.getId(), i, "COMMENTS"));
                     }
@@ -315,12 +312,8 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
 
     public static class IsPostActive{
         public static boolean isPostActive(ProcessWindowFunction.Context context, Integer postId, ConcurrentMap<Integer, Long> activePost){
-
-            PostAndDateRepository postAndDateRepository = SpringBeansUtil.getBean(PostAndDateRepository.class);
-
             long currentTime = context.window().maxTimestamp();
             //System.out.println("The current time is: "+currentTime);
-            //long postTime = postAndDateRepository.findById(postId).get().getLastUpdate().getTime(); //TODO: if optional is not found
             if(activePost.containsKey(postId)){
                 long postTime = activePost.get(postId);
                 //System.out.println("The post time is: "+postTime);
@@ -334,9 +327,6 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
             }else{
                 return true;
             }
-
-
-
         }
     }
     public static class UserEngagedWithPost implements FlatMapFunction<Stream, Tuple3<Integer, Integer, Integer>> {
@@ -365,9 +355,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                 LikesEventStream tmp = (LikesEventStream) stream;
                 collector.collect(new Tuple3<>(tmp.getPostId(),tmp.getPersonId(),1));
             } else{
-                //PostEventStream tmp = (PostEventStream) stream;
-                //System.out.println(tmp.toString());
-                //TODO: probably do nothing here
+                //nothing
             }
         }
     }
@@ -392,12 +380,7 @@ public class ActivepoststatisticsApplication implements CommandLineRunner {
                 userIds.add(t.f1);
                 //System.out.println(t.f0+" should be the same ");
             }
-            //if(IsPostActive.isPostActive(context, postAndComment.get().getPostId())){
-//            for(int j=0; iterable.iterator().hasNext(); j++){
-//TODO: check if it is the correct post id and also that your assumption is correct
-//                System.out.println(iterable.iterator().next().f0);
-//
-//            }
+
             if(IsPostActive.isPostActive(context, iterable.iterator().next().f0, activePosts)) {
                 collector.collect(new Tuple4<>(iterable.iterator().next().f0, new Date(context.window().getEnd()), userIds.size(), "USER ENGAGED WITH POST"));
             }

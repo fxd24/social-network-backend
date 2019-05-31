@@ -1,23 +1,18 @@
 package com.dspa.project.unusualactivitydetection;
 
 import com.dspa.project.common.deserialization.CommentStreamDeserializationSchema;
-import com.dspa.project.common.deserialization.LikesEventStreamDeserializationSchema;
 import com.dspa.project.common.deserialization.PostEventStreamDeserializationSchema;
 import com.dspa.project.model.CommentEventStream;
-import com.dspa.project.model.PostAndComment;
 import com.dspa.project.model.PostEventStream;
 import com.dspa.project.model.Stream;
 import flink.StreamConsumer;
 import flink.StreamTimestampAssigner;
 import org.apache.flink.api.java.tuple.Tuple3;
-import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.ProcessFunction;
-import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer011;
 import org.apache.flink.util.Collector;
 import org.springframework.boot.CommandLineRunner;
@@ -44,22 +39,15 @@ public class UnusualactivitydetectionApplication implements CommandLineRunner {
         /*******************  General Config *********************/
         StreamExecutionEnvironment environment = StreamExecutionEnvironment.getExecutionEnvironment();
         environment.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-        StreamTimestampAssigner streamTimestampAssigner = new StreamTimestampAssigner(Time.milliseconds(300000)); //TODO: modify to new value
+        StreamTimestampAssigner streamTimestampAssigner = new StreamTimestampAssigner(Time.milliseconds(300000));
         /*******************  CommentEventStream Config *********************/
         FlinkKafkaConsumer011<Stream> consumeComment = StreamConsumer.createStreamConsumer("comment","localhost:9092", "unusual", new CommentStreamDeserializationSchema());
-        consumeComment.setStartFromEarliest(); //TODO: change this based on what is required
+        consumeComment.setStartFromEarliest();
         DataStream<Stream> commentInputStream = environment.addSource(consumeComment);
-        /*******************  LikesEventStream Config *********************/
-        FlinkKafkaConsumer011<Stream> consumeLikes = StreamConsumer.createStreamConsumer("likes", "localhost:9092", "unusual", new LikesEventStreamDeserializationSchema());
-        consumeLikes.setStartFromEarliest();
-        DataStream<Stream> likesInputStream = environment.addSource(consumeLikes);
         /*******************  PostEventStream Config *********************/
         FlinkKafkaConsumer011<Stream> consumePost = StreamConsumer.createStreamConsumer("post", "localhost:9092", "unusual", new PostEventStreamDeserializationSchema());
         consumePost.setStartFromEarliest();
         DataStream<Stream> postInputStream = environment.addSource(consumePost);
-
-
-        //TODO: do we persist the data in this module?
 
         /** Assign Timestamps and Watermarks on all the streams **/
         //DataStream<Stream> connectedStream = commentInputStream.union(likesInputStream,postInputStream).assignTimestampsAndWatermarks(streamTimestampAssigner);
@@ -189,13 +177,8 @@ public class UnusualactivitydetectionApplication implements CommandLineRunner {
         }
 
         public boolean isAnomaly(double value){
-//            double stdevs = (value-this.mean)/stddev();
-//            if(Math.abs(stdevs)>threshold){
-//                return true;
-//            }else {
-//                return false;
-//            }
-            double cut_off = 0.5*stddev(); //TODO: here you can specify how many stddevs you want to use as threshold.
+
+            double cut_off = 0.5*stddev(); //here you can specify how many stddevs you want to use as threshold.
             double lower = this.mean-cut_off;
             double upper = this.mean+cut_off;
             if((value < lower || value > upper) && count > 4){ //count>4 in order to have enough samples to say something

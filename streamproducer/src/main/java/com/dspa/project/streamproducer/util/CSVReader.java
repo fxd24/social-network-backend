@@ -21,12 +21,8 @@ import static com.dspa.project.streamproducer.util.Util.handleFileNotFoundExcept
 
 public class CSVReader {
 
-    //TODO: fix problem that does not recognize values from app properties
-    //@Value(value = "${comment.topic.name}")
     String commentTopicName = "comment";
-    //@Value(value = "${likes.topic.name}")
     String likesTopicName = "likes";
-    //@Value(value = "${post.topic.name}")
     String postTopicName = "post";
 
     private final Pattern pattern;
@@ -60,9 +56,9 @@ public class CSVReader {
                         .locationIP(lineArray[3])
                         .browserUsed(lineArray[4])
                         .content(lineArray[5])
-                        .reply_to_postId(Integer.parseInt(lineArray[6].equals("")  ?  "-1":lineArray[6])) //TODO: handle this empty string problem in a cleaner way.
-                        .reply_to_commentId(Integer.parseInt(lineArray[7].equals("") ? "-1":lineArray[7] ))//TODO
-                        .placeId(Integer.parseInt(lineArray[8].equals("") ? "-1": lineArray[8]))//TODO
+                        .reply_to_postId(Integer.parseInt(lineArray[6].equals("")  ?  "-1":lineArray[6]))
+                        .reply_to_commentId(Integer.parseInt(lineArray[7].equals("") ? "-1":lineArray[7] ))
+                        .placeId(Integer.parseInt(lineArray[8].equals("") ? "-1": lineArray[8]))
                         .build();
 
                 //This sends the object to a topic in Kafka
@@ -96,7 +92,7 @@ public class CSVReader {
                 LikesEventStream value = new LikesEventStream
                         .Builder()
                         .personId(Integer.parseInt(lineArray[0]))
-                        .postId(Integer.parseInt(lineArray[1].equals("") ? "-1":lineArray[1] )) //TODO: handle this empty string problem in a cleaner way.
+                        .postId(Integer.parseInt(lineArray[1].equals("") ? "-1":lineArray[1] ))
                         .creationDate(lineArray[2])
                         .build();
                 //Here the code will wait before sending the LikesEventStream value created above
@@ -141,8 +137,8 @@ public class CSVReader {
                         .language(lineArray[6])
                         .content(lineArray[7])
                         .tags(lineArray[8])
-                        .forumId(Integer.parseInt(lineArray[9])) //TODO
-                        .placeId(Integer.parseInt(lineArray[10].equals("") ? "-1":lineArray[10].replaceAll("\\D+","")))//TODO
+                        .forumId(Integer.parseInt(lineArray[9]))
+                        .placeId(Integer.parseInt(lineArray[10].equals("") ? "-1":lineArray[10].replaceAll("\\D+","")))
                         .build();
 //                sleep.wait(last_timestamp, lineArray[2]);
 //                last_timestamp = lineArray[2];
