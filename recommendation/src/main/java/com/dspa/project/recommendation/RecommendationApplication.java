@@ -8,6 +8,9 @@ import com.dspa.project.recommendation.repository.PersonHasInterestTagRepository
 import flink.StreamConsumer;
 import flink.StreamTimestampAssigner;
 import javafx.util.Pair;
+import org.apache.flink.api.common.functions.MapFunction;
+import org.apache.flink.api.java.tuple.Tuple;
+import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.api.java.tuple.Tuple4;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -41,15 +44,15 @@ public class RecommendationApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-/*******************  General Config *********************/
+        /*******************  General Config *********************/
         StreamExecutionEnvironment environment = StreamExecutionEnvironment.getExecutionEnvironment();
         environment.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
         StreamTimestampAssigner streamTimestampAssigner = new StreamTimestampAssigner(Time.milliseconds(300000));
 
         /*******************  LikesEventStream Config *********************/
         FlinkKafkaConsumer011<Stream> consumeLikes = StreamConsumer.createStreamConsumer("likes", "localhost:9092", "recommender", new LikesEventStreamDeserializationSchema());
-        consumeLikes.setStartFromLatest();
-        //consumeLikes.setStartFromEarliest();
+        //consumeLikes.setStartFromLatest();
+        consumeLikes.setStartFromEarliest();
         DataStream<Stream> likesInputStream = environment.addSource(consumeLikes);
 
         /***********    COOL STUFF FOR RECOMMENDATION  ****************/
@@ -62,7 +65,8 @@ public class RecommendationApplication implements CommandLineRunner {
         }
         likesInputStream
                 .assignTimestampsAndWatermarks(streamTimestampAssigner)
-                .keyBy(x->{return ((LikesEventStream) x).getPersonId();})
+                .map(new DummyMap())
+                .keyBy(0)
                 .window(SlidingEventTimeWindows.of(Time.hours(4),Time.hours(1)))
                 .process(new RecommendationFunction(/*userAndSimilarUserCount*/))
                 .print()
@@ -73,23 +77,21 @@ public class RecommendationApplication implements CommandLineRunner {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-
     }
 
     public class RecommendationFunction extends ProcessWindowFunction<
-            Stream,
+            Tuple2<Integer,Stream>,
             Tuple4<Integer, Date, Map<Integer, Integer>, String>,
-            Integer,
+            Tuple,
             TimeWindow> {
-//        private final Map<Integer, Map<Integer,Integer>> userAndSimilarUserCount;
-
+//        Map<Integer, Map<Integer,Integer>> userAndSimilarUserCount;
+//
 //        public RecommendationFunction(Map<Integer, Map<Integer, Integer>> userAndSimilarUserCount) {
 //            this.userAndSimilarUserCount = userAndSimilarUserCount;
 //        }
 
         @Override
-        public void process(Integer integer, Context context, Iterable<Stream> iterable, Collector<Tuple4<Integer, Date, Map<Integer, Integer>, String>> collector) throws Exception {
+        public void process(Tuple integer, Context context, Iterable<Tuple2<Integer,Stream>> iterable, Collector<Tuple4<Integer, Date, Map<Integer, Integer>, String>> collector) throws Exception {
             Map<Integer, List<Integer>> postWithUserLikes = new HashMap<>();
             Map<Integer, List<Integer>> userWithPostHeLikes = new HashMap<>();
             Map<Integer, Map<Integer,Integer>> userAndSimilarUserCount = /*this.userAndSimilarUserCount;//*/new HashMap<>(); //<User for recommendation, Tuple2<Possible similar user, count of how many equal likes they have>>
@@ -97,8 +99,8 @@ public class RecommendationApplication implements CommandLineRunner {
             Integer postId, userId;
             LikesEventStream likesEventStream;
             /***** BUILD HashMaps for recommentdation ****/
-            for(Stream stream : iterable){
-                likesEventStream = (LikesEventStream) stream;
+            for(Tuple2<Integer,Stream> stream : iterable){
+                likesEventStream = (LikesEventStream) stream.f1;
                 postId = likesEventStream.getPostId();
                 userId = likesEventStream.getPersonId();
 
@@ -120,7 +122,7 @@ public class RecommendationApplication implements CommandLineRunner {
             }
 
             /*** COUNT HOW MANY LIKES BOTH USERS HAVE FOR A COMMON POST ****/
-            int[] personIds = {47};//, 192, 265, 395, 406, 581, 650, 724, 838, 913};    //User we are making the recommendation for.
+            int[] personIds = {47, 192, 265, 395, 406, 581, 650, 724, 838, 910}; //User we are making the recommendation for.
             List<Integer> likedPosts;
             List<Integer> userLikedPost;
             Set<Integer> sameInterest;
@@ -132,14 +134,14 @@ public class RecommendationApplication implements CommandLineRunner {
                         for(Integer maybe_similar_user : userLikedPost){
                             updateSimilarUserCount(userAndSimilarUserCount, user, maybe_similar_user);
                         }
-                        sameInterest = sameInterestTag(user);
-                        for(Integer maybe_similar_user : sameInterest){
-                            updateSimilarUserCount(userAndSimilarUserCount, user, maybe_similar_user);
-                        }
                     }
-                    /****  COLLECT RESULTS *****/
-                    collector.collect(new Tuple4(user, new Date(context.window().getEnd()), get5MostSimilarUser(userAndSimilarUserCount.get(user), user), "Recommendation"));
                 }
+                sameInterest = sameInterestTag(user);
+                for(Integer maybe_similar_user : sameInterest){
+                    updateSimilarUserCount(userAndSimilarUserCount, user, maybe_similar_user);
+                }
+                /****  COLLECT RESULTS *****/
+                collector.collect(new Tuple4(user, new Date(context.window().getEnd()), get5MostSimilarUser(userAndSimilarUserCount.get(user), user), "Recommendation"));
             }
         }
 
@@ -197,7 +199,7 @@ public class RecommendationApplication implements CommandLineRunner {
             return result;
         }
 
-        //TODO
+
         private boolean isFriend(Integer userId1, Integer userId2){
             return false;
         }
@@ -220,8 +222,14 @@ public class RecommendationApplication implements CommandLineRunner {
                     }
                 }
             }
-
             return similarUser;
+        }
+    }
+
+    public class DummyMap implements MapFunction<Stream, Tuple2<Integer, Stream>> {
+        @Override
+        public Tuple2<Integer, Stream> map(Stream stream) throws Exception {
+            return new Tuple2<>(0,stream);
         }
     }
 

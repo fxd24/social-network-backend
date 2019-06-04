@@ -177,7 +177,6 @@ public class UnusualactivitydetectionApplication implements CommandLineRunner {
         }
 
         public boolean isAnomaly(double value){
-
             double cut_off = 0.5*stddev(); //here you can specify how many stddevs you want to use as threshold.
             double lower = this.mean-cut_off;
             double upper = this.mean+cut_off;
